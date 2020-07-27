@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.0.0
+# Current Version: 1.0.1
 
 ## How to get and use?
 # git clone "https://github.com/hezhijie0327/CloudflareDDNS.git" && chmod 0777 ./CloudflareDDNS/CloudflareDDNS.sh && bash ./CloudflareDDNS/CloudflareDDNS.sh -e user@example.com -k 123defghijk4567pqrstuvw890 -z example.com -r demo.example.com -t A -l 900 -p false -m create
@@ -51,45 +51,45 @@ done
 ## Function
 # Check Configuration Validity
 function CheckConfigurationValidity() {
-    if [ "${XAuthEmail}" = "" ]; then
+    if [ "${XAuthEmail}" == "" ]; then
         echo "An error occurred during processing. Missing (XAuthEmail) value, please check it and try again."
         exit 1
     fi
-    if [ "${XAuthKey}" = "" ]; then
+    if [ "${XAuthKey}" == "" ]; then
         echo "An error occurred during processing. Missing (XAuthKey) value, please check it and try again."
         exit 1
     fi
-    if [ "${ZoneName}" = "" ]; then
+    if [ "${ZoneName}" == "" ]; then
         echo "An error occurred during processing. Missing (ZoneName) value, please check it and try again."
         exit 1
     fi
-    if [ "${RecordName}" = "" ]; then
+    if [ "${RecordName}" == "" ]; then
         echo "An error occurred during processing. Missing (RecordName) value, please check it and try again."
         exit 1
     fi
-    if [ "${RunningMode}" = "" ]; then
+    if [ "${RunningMode}" == "" ]; then
         echo "An error occurred during processing. Missing (RunningMode) value, please check it and try again."
         exit 1
     elif [ "${RunningMode}" != "create" ] && [ "${RunningMode}" != "update" ] && [ "${RunningMode}" != "delete" ]; then
         echo "An error occurred during processing. Invalid (RunningMode) value, please check it and try again."
         exit 1
     fi
-    if [ "${RunningMode}" = "create" ] || [ "${RunningMode}" = "update" ]; then
-        if [ "${Type}" = "" ]; then
+    if [ "${RunningMode}" == "create" ] || [ "${RunningMode}" == "update" ]; then
+        if [ "${Type}" == "" ]; then
             echo "An error occurred during processing. Missing (Type) value, please check it and try again."
             exit 1
         elif [ "${Type}" != "A" ] && [ "${Type}" != "AAAA" ]; then
             echo "An error occurred during processing. Invalid (Type) value, please check it and try again."
             exit 1
         fi
-        if [ "${TTL}" = "" ]; then
+        if [ "${TTL}" == "" ]; then
             echo "An error occurred during processing. Missing (TTL) value, please check it and try again."
             exit 1
         elif [ "${TTL}" != "1" ] && [ "${TTL}" != "120" ] && [ "${TTL}" != "300" ] && [ "${TTL}" != "600" ] && [ "${TTL}" != "900" ] && [ "${TTL}" != "1800" ] && [ "${TTL}" != "3600" ] && [ "${TTL}" != "7200" ] && [ "${TTL}" != "18000" ] && [ "${TTL}" != "43200" ] && [ "${TTL}" != "86400" ]; then
             echo "An error occurred during processing. Invalid (TTL) value, please check it and try again."
             exit 1
         fi
-        if [ "${ProxyStatus}" = "" ]; then
+        if [ "${ProxyStatus}" == "" ]; then
             echo "An error occurred during processing. Missing (ProxyStatus) value, please check it and try again."
             exit 1
         elif [ "${ProxyStatus}" != "true" ] && [ "${ProxyStatus}" != "false" ]; then
@@ -101,13 +101,13 @@ function CheckConfigurationValidity() {
 # Get Account Name
 function GetAccountName() {
     CloudflareAPIv4Response=$(curl -s --connect-timeout 15 -X GET "https://api.cloudflare.com/client/v4/accounts?page=1&per_page=5&direction=desc" -H "X-Auth-Email: ${XAuthEmail}" -H "X-Auth-Key: ${XAuthKey}" -H "Content-Type: application/json")
-    if [ "$(echo ${CloudflareAPIv4Response} | jq -r '.success')" = "true" ]; then
-        if [ "$(echo ${CloudflareAPIv4Response} | jq -r '.result[] | {name} | .name')" = "" ]; then
+    if [ "$(echo ${CloudflareAPIv4Response} | jq -r '.success')" == "true" ]; then
+        if [ "$(echo ${CloudflareAPIv4Response} | jq -r '.result[] | {name} | .name')" == "" ]; then
             echo "false"
         else
             echo "$(echo ${CloudflareAPIv4Response} | jq -r '.result[] | {name} | .name')"
         fi
-    elif [ "$(echo ${CloudflareAPIv4Response} | jq -r '.success')" = "false" ]; then
+    elif [ "$(echo ${CloudflareAPIv4Response} | jq -r '.success')" == "false" ]; then
         echo "false"
     else
         echo "invalid"
@@ -116,13 +116,13 @@ function GetAccountName() {
 # Get Zone ID
 function GetZoneID() {
     CloudflareAPIv4Response=$(curl -s --connect-timeout 15 -X GET "https://api.cloudflare.com/client/v4/zones?name=${ZoneName}" -H "X-Auth-Email: ${XAuthEmail}" -H "X-Auth-Key: ${XAuthKey}" -H "Content-Type: application/json")
-    if [ "$(echo ${CloudflareAPIv4Response} | jq -r '.success')" = "true" ]; then
-        if [ "$(echo ${CloudflareAPIv4Response} | jq -r '.result[] | {id} | .id')" = "" ]; then
+    if [ "$(echo ${CloudflareAPIv4Response} | jq -r '.success')" == "true" ]; then
+        if [ "$(echo ${CloudflareAPIv4Response} | jq -r '.result[] | {id} | .id')" == "" ]; then
             echo "false"
         else
             echo "$(echo ${CloudflareAPIv4Response} | jq -r '.result[] | {id} | .id')"
         fi
-    elif [ "$(echo ${CloudflareAPIv4Response} | jq -r '.success')" = "false" ]; then
+    elif [ "$(echo ${CloudflareAPIv4Response} | jq -r '.success')" == "false" ]; then
         echo "false"
     else
         echo "invalid"
@@ -130,13 +130,13 @@ function GetZoneID() {
 }
 function GetRecordID() {
     CloudflareAPIv4Response=$(curl -s --connect-timeout 15 -X GET "https://api.cloudflare.com/client/v4/zones/${ZoneID}/dns_records?name=${RecordName}" -H "X-Auth-Email: ${XAuthEmail}" -H "X-Auth-Key: ${XAuthKey}" -H "Content-Type: application/json")
-    if [ "$(echo ${CloudflareAPIv4Response} | jq -r '.success')" = "true" ]; then
-        if [ "$(echo ${CloudflareAPIv4Response} | jq -r '.result[] | {id} | .id')" = "" ]; then
+    if [ "$(echo ${CloudflareAPIv4Response} | jq -r '.success')" == "true" ]; then
+        if [ "$(echo ${CloudflareAPIv4Response} | jq -r '.result[] | {id} | .id')" == "" ]; then
             echo "false"
         else
             echo "$(echo ${CloudflareAPIv4Response} | jq -r '.result[] | {id} | .id')"
         fi
-    elif [ "$(echo ${CloudflareAPIv4Response} | jq -r '.success')" = "false" ]; then
+    elif [ "$(echo ${CloudflareAPIv4Response} | jq -r '.success')" == "false" ]; then
         echo "false"
     else
         echo "invalid"
@@ -145,13 +145,13 @@ function GetRecordID() {
 # Get DNS Record
 function GetDNSRecord() {
     CloudflareAPIv4Response=$(curl -s --connect-timeout 15 -X GET "https://api.cloudflare.com/client/v4/zones/${ZoneID}/dns_records/${RecordID}" -H "X-Auth-Email: ${XAuthEmail}" -H "X-Auth-Key: ${XAuthKey}" -H "Content-Type: application/json")
-    if [ "$(echo ${CloudflareAPIv4Response} | jq -r '.success')" = "true" ]; then
-        if [ "$(echo ${CloudflareAPIv4Response} | jq -r '.result.content')" = "" ]; then
+    if [ "$(echo ${CloudflareAPIv4Response} | jq -r '.success')" == "true" ]; then
+        if [ "$(echo ${CloudflareAPIv4Response} | jq -r '.result.content')" == "" ]; then
             echo "false"
         else
             echo "$(echo ${CloudflareAPIv4Response} | jq -r '.result.content')"
         fi
-    elif [ "$(echo ${CloudflareAPIv4Response} | jq -r '.success')" = "false" ]; then
+    elif [ "$(echo ${CloudflareAPIv4Response} | jq -r '.success')" == "false" ]; then
         echo "false"
     else
         echo "invalid"
@@ -159,11 +159,11 @@ function GetDNSRecord() {
 }
 # Get WAN IP
 function GetWANIP() {
-    if [ "${Type}" = "A" ]; then
+    if [ "${Type}" == "A" ]; then
         ipifyAPIResponse=$(curl -4 -s --connect-timeout 15 "https://api.ipify.org" | awk '{ match( $0, /[0-9.]+/ ); print substr( $0, RSTART, RLENGTH ) }')
-        if [ "${ipifyAPIResponse}" = "" ]; then
+        if [ "${ipifyAPIResponse}" == "" ]; then
             OpenDNSAPIResponse=$(dig -4 A +short myip.opendns.com @resolver$(( ( RANDOM % 2 ) + 1 )).opendns.com | awk '{ match( $0, /[0-9.]+/ ); print substr( $0, RSTART, RLENGTH ) }')
-            if [ "${OpenDNSAPIResponse}" = "" ]; then
+            if [ "${OpenDNSAPIResponse}" == "" ]; then
                 echo "invalid"
             else
                 echo "${OpenDNSAPIResponse}"
@@ -171,11 +171,11 @@ function GetWANIP() {
         else
             echo "${ipifyAPIResponse}"
         fi
-    elif [ "${Type}" = "AAAA" ]; then
+    elif [ "${Type}" == "AAAA" ]; then
         ipifyAPIResponse=$(curl -6 -s --connect-timeout 15 "https://api6.ipify.org" | awk '{ match( $0, /[0-9a-f:]+/ ); print substr( $0, RSTART, RLENGTH ) }')
-        if [ "${ipifyAPIResponse}" = "" ]; then
+        if [ "${ipifyAPIResponse}" == "" ]; then
             OpenDNSAPIResponse=$(dig -6 AAAA +short myip.opendns.com @resolver$(( ( RANDOM % 2 ) + 1 )).opendns.com | awk '{ match( $0, /[0-9a-f:]+/ ); print substr( $0, RSTART, RLENGTH ) }')
-            if [ "${OpenDNSAPIResponse}" = "" ]; then
+            if [ "${OpenDNSAPIResponse}" == "" ]; then
                 echo "invalid"
             else
                 echo "${OpenDNSAPIResponse}"
@@ -188,9 +188,9 @@ function GetWANIP() {
 # Get POST Response
 function GetPOSTResponse() {
     CloudflareAPIv4Response=$(curl -s --connect-timeout 15 -X POST "https://api.cloudflare.com/client/v4/zones/${ZoneID}/dns_records" -H "X-Auth-Email: ${XAuthEmail}" -H "X-Auth-Key: ${XAuthKey}" -H "Content-Type: application/json" --data "{\"type\":\"${Type}\",\"name\":\"${RecordName}\",\"content\":\"${WANIP}\",\"ttl\":${TTL},\"proxied\":${ProxyStatus}}")
-    if [ "$(echo ${CloudflareAPIv4Response} | jq -r '.success')" = "true" ]; then
+    if [ "$(echo ${CloudflareAPIv4Response} | jq -r '.success')" == "true" ]; then
         echo "true"
-    elif [ "$(echo ${CloudflareAPIv4Response} | jq -r '.success')" = "false" ]; then
+    elif [ "$(echo ${CloudflareAPIv4Response} | jq -r '.success')" == "false" ]; then
         echo "false"
     else
         echo "invalid"
@@ -199,9 +199,9 @@ function GetPOSTResponse() {
 # Get PUT Response
 function GetPUTResponse() {
     CloudflareAPIv4Response=$(curl -s --connect-timeout 15 -X PUT "https://api.cloudflare.com/client/v4/zones/${ZoneID}/dns_records/${RecordID}" -H "X-Auth-Email: ${XAuthEmail}" -H "X-Auth-Key: ${XAuthKey}" -H "Content-Type: application/json" --data "{\"type\":\"${Type}\",\"name\":\"${RecordName}\",\"content\":\"${WANIP}\",\"ttl\":${TTL},\"proxied\":${ProxyStatus}}")
-    if [ "$(echo ${CloudflareAPIv4Response} | jq -r '.success')" = "true" ]; then
+    if [ "$(echo ${CloudflareAPIv4Response} | jq -r '.success')" == "true" ]; then
         echo "true"
-    elif [ "$(echo ${CloudflareAPIv4Response} | jq -r '.success')" = "false" ]; then
+    elif [ "$(echo ${CloudflareAPIv4Response} | jq -r '.success')" == "false" ]; then
         echo "false"
     else
         echo "invalid"
@@ -210,9 +210,9 @@ function GetPUTResponse() {
 # Get DELETE Response
 function GetDELETEResponse() {
     CloudflareAPIv4Response=$(curl -s --connect-timeout 15 -X DELETE "https://api.cloudflare.com/client/v4/zones/${ZoneID}/dns_records/${RecordID}" -H "X-Auth-Email: ${XAuthEmail}" -H "X-Auth-Key: ${XAuthKey}" -H "Content-Type: application/json")
-    if [ "$(echo ${CloudflareAPIv4Response} | jq -r '.success')" = "true" ]; then
+    if [ "$(echo ${CloudflareAPIv4Response} | jq -r '.success')" == "true" ]; then
         echo "true"
-    elif [ "$(echo ${CloudflareAPIv4Response} | jq -r '.success')" = "false" ]; then
+    elif [ "$(echo ${CloudflareAPIv4Response} | jq -r '.success')" == "false" ]; then
         echo "false"
     else
         echo "invalid"
@@ -222,30 +222,30 @@ function GetDELETEResponse() {
 ## Process
 # Call CheckConfigurationValidity
 CheckConfigurationValidity
-if [ "${RunningMode}" = "create" ]; then
+if [ "${RunningMode}" == "create" ]; then
     # Call GetAccountName
     AccountName=$(GetAccountName)
-    if [ "${AccountName}" = "invalid" ]; then
+    if [ "${AccountName}" == "invalid" ]; then
         echo "An error occurred during processing. Invalid (AccountName) value, please check your network connectivity, and try again."
         exit 1
-    elif [ "${AccountName}" = "false" ]; then
+    elif [ "${AccountName}" == "false" ]; then
         echo "An error occurred during processing. Invalid (AccountName) value, please check (XAuthEmail) and (XAuthKey) value, and try again."
         exit 1
     else
         echo "Current Account Name: ${AccountName}"
         # Call GetZoneID
         ZoneID=$(GetZoneID)
-        if [ "${ZoneID}" = "invalid" ]; then
+        if [ "${ZoneID}" == "invalid" ]; then
             echo "An error occurred during processing. Invalid (ZoneID) value, please check your network connectivity, and try again."
             exit 1
-        elif [ "${ZoneID}" = "false" ]; then
+        elif [ "${ZoneID}" == "false" ]; then
             echo "An error occurred during processing. Invalid (ZoneID) value, please check (ZoneName) value, and try again."
             exit 1
         else
             echo "Current Zone ID: ${ZoneID}"
             # Call GetRecordID
             RecordID=$(GetRecordID)
-            if [ "${RecordID}" = "invalid" ]; then
+            if [ "${RecordID}" == "invalid" ]; then
                 echo "An error occurred during processing. Invalid (RecordID) value, please check your network connectivity, and try again."
                 exit 1
             elif [ "${RecordID}" != "invalid" ] && [ "${RecordID}" != "false" ]; then
@@ -254,8 +254,8 @@ if [ "${RunningMode}" = "create" ]; then
             else
                 # Call GetWANIP
                 WANIP=$(GetWANIP)
-                if [ "${WANIP}" = "invalid" ]; then
-                    if [ "${Type}" = "A" ]; then
+                if [ "${WANIP}" == "invalid" ]; then
+                    if [ "${Type}" == "A" ]; then
                         echo "An error occurred during processing. Invalid (WANIP) value, please check your IPv4 connectivity."
                         exit 1
                     else
@@ -266,7 +266,7 @@ if [ "${RunningMode}" = "create" ]; then
                     echo "Current WAN IP: ${WANIP}"
                     # Call GetPOSTResponse
                     POSTResponse=$(GetPOSTResponse)
-                    if [ "${POSTResponse}" = "true" ]; then
+                    if [ "${POSTResponse}" == "true" ]; then
                         echo "No error occurred during processing. ${RecordName} has been created."
                         exit 0
                     else
@@ -277,41 +277,41 @@ if [ "${RunningMode}" = "create" ]; then
             fi
         fi
     fi
-elif [ "${RunningMode}" = "update" ]; then
+elif [ "${RunningMode}" == "update" ]; then
     # Call GetAccountName
     AccountName=$(GetAccountName)
-    if [ "${AccountName}" = "invalid" ]; then
+    if [ "${AccountName}" == "invalid" ]; then
         echo "An error occurred during processing. Invalid (AccountName) value, please check your network connectivity, and try again."
         exit 1
-    elif [ "${AccountName}" = "false" ]; then
+    elif [ "${AccountName}" == "false" ]; then
         echo "An error occurred during processing. Invalid (AccountName) value, please check (XAuthEmail) and (XAuthKey) value, and try again."
         exit 1
     else
         echo "Current Account Name: ${AccountName}"
         # Call GetZoneID
         ZoneID=$(GetZoneID)
-        if [ "${ZoneID}" = "invalid" ]; then
+        if [ "${ZoneID}" == "invalid" ]; then
             echo "An error occurred during processing. Invalid (ZoneID) value, please check your network connectivity, and try again."
             exit 1
-        elif [ "${ZoneID}" = "false" ]; then
+        elif [ "${ZoneID}" == "false" ]; then
             echo "An error occurred during processing. Invalid (ZoneID) value, please check (ZoneName) value, and try again."
             exit 1
         else
             echo "Current Zone ID: ${ZoneID}"
             # Call GetRecordID
             RecordID=$(GetRecordID)
-            if [ "${RecordID}" = "invalid" ]; then
+            if [ "${RecordID}" == "invalid" ]; then
                 echo "An error occurred during processing. Invalid (RecordID) value, please check your network connectivity, and try again."
                 exit 1
-            elif [ "${RecordID}" = "false" ]; then
+            elif [ "${RecordID}" == "false" ]; then
                 echo "An error occurred during processing. ${RecordName} has not been existed."
                 exit 1
             else
                 echo "Current Record ID: ${RecordID}"
                 # Call GetWANIP
                 WANIP=$(GetWANIP)
-                if [ "${WANIP}" = "invalid" ]; then
-                    if [ "${Type}" = "A" ]; then
+                if [ "${WANIP}" == "invalid" ]; then
+                    if [ "${Type}" == "A" ]; then
                         echo "An error occurred during processing. Invalid (WANIP) value, please check your IPv4 connectivity."
                         exit 1
                     else
@@ -322,21 +322,21 @@ elif [ "${RunningMode}" = "update" ]; then
                     echo "Current WAN IP: ${WANIP}"
                     # Call GetDNSRecord
                     DNSRecord=$(GetDNSRecord)
-                    if [ "${DNSRecord}" = "invalid" ]; then
+                    if [ "${DNSRecord}" == "invalid" ]; then
                         echo "An error occurred during processing. Invalid (DNSRecord) value, please check your network connectivity, and try again."
                         exit 1
-                    elif [ "${DNSRecord}" = "false" ]; then
+                    elif [ "${DNSRecord}" == "false" ]; then
                         echo "An error occurred during processing. Invalid (DNSRecord) value, please check (ZoneName) and (RecordName) value, and try again."
                         exit 1
                     else
-                        if [ "${DNSRecord}" = "${WANIP}" ]; then
+                        if [ "${DNSRecord}" == "${WANIP}" ]; then
                             echo "An error occurred during processing. WAN IP has not been changed."
                             exit 1
                         else
                             echo "Current DNS Record: ${DNSRecord}"
                             # Call GetPOSTResponse
                             PUTResponse=$(GetPUTResponse)
-                            if [ "${PUTResponse}" = "true" ]; then
+                            if [ "${PUTResponse}" == "true" ]; then
                                 echo "No error occurred during processing. ${RecordName} has been updated."
                                 exit 0
                             else
@@ -352,37 +352,37 @@ elif [ "${RunningMode}" = "update" ]; then
 else
     # Call GetAccountName
     AccountName=$(GetAccountName)
-    if [ "${AccountName}" = "invalid" ]; then
+    if [ "${AccountName}" == "invalid" ]; then
         echo "An error occurred during processing. Invalid (AccountName) value, please check your network connectivity, and try again."
         exit 1
-    elif [ "${AccountName}" = "false" ]; then
+    elif [ "${AccountName}" == "false" ]; then
         echo "An error occurred during processing. Invalid (AccountName) value, please check (XAuthEmail) and (XAuthKey) value, and try again."
         exit 1
     else
         echo "Current Account Name: ${AccountName}"
         # Call GetZoneID
         ZoneID=$(GetZoneID)
-        if [ "${ZoneID}" = "invalid" ]; then
+        if [ "${ZoneID}" == "invalid" ]; then
             echo "An error occurred during processing. Invalid (ZoneID) value, please check your network connectivity, and try again."
             exit 1
-        elif [ "${ZoneID}" = "false" ]; then
+        elif [ "${ZoneID}" == "false" ]; then
             echo "An error occurred during processing. Invalid (ZoneID) value, please check (ZoneName) value, and try again."
             exit 1
         else
             echo "Current Zone ID: ${ZoneID}"
             # Call GetRecordID
             RecordID=$(GetRecordID)
-            if [ "${RecordID}" = "invalid" ]; then
+            if [ "${RecordID}" == "invalid" ]; then
                 echo "An error occurred during processing. Invalid (RecordID) value, please check your network connectivity, and try again."
                 exit 1
-            elif [ "${RecordID}" = "false" ]; then
+            elif [ "${RecordID}" == "false" ]; then
                 echo "An error occurred during processing. ${RecordName} has not been existed."
                 exit 1
             else
                 echo "Current Record ID: ${RecordID}"
                 # Call GetDELETEResponse
                 DELETEResponse=$(GetDELETEResponse)
-                if [ "${DELETEResponse}" = "true" ]; then
+                if [ "${DELETEResponse}" == "true" ]; then
                     echo "No error occurred during processing. ${RecordName} has been deleted."
                     exit 0
                 else
