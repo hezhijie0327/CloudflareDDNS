@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.0.1
+# Current Version: 1.0.2
 
 ## How to get and use?
 # git clone "https://github.com/hezhijie0327/CloudflareDDNS.git" && chmod 0777 ./CloudflareDDNS/CloudflareDDNS.sh && bash ./CloudflareDDNS/CloudflareDDNS.sh -e user@example.com -k 123defghijk4567pqrstuvw890 -z example.com -r demo.example.com -t A -l 900 -p false -m create
@@ -160,9 +160,9 @@ function GetDNSRecord() {
 # Get WAN IP
 function GetWANIP() {
     if [ "${Type}" == "A" ]; then
-        ipifyAPIResponse=$(curl -4 -s --connect-timeout 15 "https://api.ipify.org" | awk '{ match( $0, /[0-9.]+/ ); print substr( $0, RSTART, RLENGTH ) }')
+        ipifyAPIResponse=$(curl -4 -s --connect-timeout 15 "https://api.ipify.org" | grep -E "^((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$")
         if [ "${ipifyAPIResponse}" == "" ]; then
-            OpenDNSAPIResponse=$(dig -4 A +short myip.opendns.com @resolver$(( ( RANDOM % 2 ) + 1 )).opendns.com | awk '{ match( $0, /[0-9.]+/ ); print substr( $0, RSTART, RLENGTH ) }')
+            OpenDNSAPIResponse=$(dig -4 A +short myip.opendns.com @resolver$(( ( RANDOM % 2 ) + 1 )).opendns.com | grep -E "^((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$")
             if [ "${OpenDNSAPIResponse}" == "" ]; then
                 echo "invalid"
             else
@@ -172,9 +172,9 @@ function GetWANIP() {
             echo "${ipifyAPIResponse}"
         fi
     elif [ "${Type}" == "AAAA" ]; then
-        ipifyAPIResponse=$(curl -6 -s --connect-timeout 15 "https://api6.ipify.org" | awk '{ match( $0, /[0-9a-f:]+/ ); print substr( $0, RSTART, RLENGTH ) }')
+        ipifyAPIResponse=$(curl -6 -s --connect-timeout 15 "https://api6.ipify.org" | tr "A-F" "a-f" | grep -E "^((([0-9a-f]{1,4}:){7}[0-9a-f]{1,4})|(([0-9a-f]{1,4}:){1,7}:)|(([0-9a-f]{1,4}:){6}:[0-9a-f]{1,4})|(([0-9a-f]{1,4}:){5}(:[0-9a-f]{1,4}){1,2})|(([0-9a-f]{1,4}:){4}(:[0-9a-f]{1,4}){1,3})|(([0-9a-f]{1,4}:){3}(:[0-9a-f]{1,4}){1,4})|(([0-9a-f]{1,4}:){2}(:[0-9a-f]{1,4}){1,5})|([0-9a-f]{1,4}:(:[0-9a-f]{1,4}){1,6})|(:(:[0-9a-f]{1,4}){1,7})|(([0-9a-f]{1,4}:){6}(\\d|[1-9]\\d|1\\d{2}|2[0-4]\\d|25[0-5])(\\.(\\d|[1-9]\\d|1\\d{2}|2[0-4]\\d|25[0-5])){3})|(([0-9a-f]{1,4}:){5}:(\\d|[1-9]\\d|1\\d{2}|2[0-4]\\d|25[0-5])(\\.(\\d|[1-9]\\d|1\\d{2}|2[0-4]\\d|25[0-5])){3})|(([0-9a-f]{1,4}:){4}(:[0-9a-f]{1,4}){0,1}:(\\d|[1-9]\\d|1\\d{2}|2[0-4]\\d|25[0-5])(\\.(\\d|[1-9]\\d|1\\d{2}|2[0-4]\\d|25[0-5])){3})|(([0-9a-f]{1,4}:){3}(:[0-9a-f]{1,4}){0,2}:(\\d|[1-9]\\d|1\\d{2}|2[0-4]\\d|25[0-5])(\\.(\\d|[1-9]\\d|1\\d{2}|2[0-4]\\d|25[0-5])){3})|(([0-9a-f]{1,4}:){2}(:[0-9a-f]{1,4}){0,3}:(\\d|[1-9]\\d|1\\d{2}|2[0-4]\\d|25[0-5])(\\.(\\d|[1-9]\\d|1\\d{2}|2[0-4]\\d|25[0-5])){3})|([0-9a-f]{1,4}:(:[0-9a-f]{1,4}){0,4}:(\\d|[1-9]\\d|1\\d{2}|2[0-4]\\d|25[0-5])(\\.(\\d|[1-9]\\d|1\\d{2}|2[0-4]\\d|25[0-5])){3})|(:(:[0-9a-f]{1,4}){0,5}:(\\d|[1-9]\\d|1\\d{2}|2[0-4]\\d|25[0-5])(\\.(\\d|[1-9]\\d|1\\d{2}|2[0-4]\\d|25[0-5])){3}))$")
         if [ "${ipifyAPIResponse}" == "" ]; then
-            OpenDNSAPIResponse=$(dig -6 AAAA +short myip.opendns.com @resolver$(( ( RANDOM % 2 ) + 1 )).opendns.com | awk '{ match( $0, /[0-9a-f:]+/ ); print substr( $0, RSTART, RLENGTH ) }')
+            OpenDNSAPIResponse=$(dig -6 AAAA +short myip.opendns.com @resolver$(( ( RANDOM % 2 ) + 1 )).opendns.com | tr "A-F" "a-f" | grep -E "^((([0-9a-f]{1,4}:){7}[0-9a-f]{1,4})|(([0-9a-f]{1,4}:){1,7}:)|(([0-9a-f]{1,4}:){6}:[0-9a-f]{1,4})|(([0-9a-f]{1,4}:){5}(:[0-9a-f]{1,4}){1,2})|(([0-9a-f]{1,4}:){4}(:[0-9a-f]{1,4}){1,3})|(([0-9a-f]{1,4}:){3}(:[0-9a-f]{1,4}){1,4})|(([0-9a-f]{1,4}:){2}(:[0-9a-f]{1,4}){1,5})|([0-9a-f]{1,4}:(:[0-9a-f]{1,4}){1,6})|(:(:[0-9a-f]{1,4}){1,7})|(([0-9a-f]{1,4}:){6}(\\d|[1-9]\\d|1\\d{2}|2[0-4]\\d|25[0-5])(\\.(\\d|[1-9]\\d|1\\d{2}|2[0-4]\\d|25[0-5])){3})|(([0-9a-f]{1,4}:){5}:(\\d|[1-9]\\d|1\\d{2}|2[0-4]\\d|25[0-5])(\\.(\\d|[1-9]\\d|1\\d{2}|2[0-4]\\d|25[0-5])){3})|(([0-9a-f]{1,4}:){4}(:[0-9a-f]{1,4}){0,1}:(\\d|[1-9]\\d|1\\d{2}|2[0-4]\\d|25[0-5])(\\.(\\d|[1-9]\\d|1\\d{2}|2[0-4]\\d|25[0-5])){3})|(([0-9a-f]{1,4}:){3}(:[0-9a-f]{1,4}){0,2}:(\\d|[1-9]\\d|1\\d{2}|2[0-4]\\d|25[0-5])(\\.(\\d|[1-9]\\d|1\\d{2}|2[0-4]\\d|25[0-5])){3})|(([0-9a-f]{1,4}:){2}(:[0-9a-f]{1,4}){0,3}:(\\d|[1-9]\\d|1\\d{2}|2[0-4]\\d|25[0-5])(\\.(\\d|[1-9]\\d|1\\d{2}|2[0-4]\\d|25[0-5])){3})|([0-9a-f]{1,4}:(:[0-9a-f]{1,4}){0,4}:(\\d|[1-9]\\d|1\\d{2}|2[0-4]\\d|25[0-5])(\\.(\\d|[1-9]\\d|1\\d{2}|2[0-4]\\d|25[0-5])){3})|(:(:[0-9a-f]{1,4}){0,5}:(\\d|[1-9]\\d|1\\d{2}|2[0-4]\\d|25[0-5])(\\.(\\d|[1-9]\\d|1\\d{2}|2[0-4]\\d|25[0-5])){3}))$")
             if [ "${OpenDNSAPIResponse}" == "" ]; then
                 echo "invalid"
             else
