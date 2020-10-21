@@ -1,9 +1,9 @@
 #!/bin/bash
 
-# Current Version: 1.0.6
+# Current Version: 1.0.7
 
 ## How to get and use?
-# git clone "https://github.com/hezhijie0327/CloudflareDDNS.git" && chmod 0777 ./CloudflareDDNS/CloudflareDDNS.sh && bash ./CloudflareDDNS/CloudflareDDNS.sh -e user@example.com -k 123defghijk4567pqrstuvw890 -z example.com -r demo.example.com -t A -l 900 -p false -m create
+# git clone "https://github.com/hezhijie0327/CloudflareDDNS.git" && bash ./CloudflareDDNS/CloudflareDDNS.sh -e user@example.com -k 123defghijk4567pqrstuvw890 -z example.com -r demo.example.com -t A -l 900 -p false -m create
 
 ## How to fix?
 # Syntax error: "(" unexpected -> dpkg-reconfigure dash -> No
