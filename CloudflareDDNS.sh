@@ -1,30 +1,27 @@
 #!/bin/bash
 
-# Current Version: 1.0.7
+# Current Version: 1.0.8
 
 ## How to get and use?
-# git clone "https://github.com/hezhijie0327/CloudflareDDNS.git" && bash ./CloudflareDDNS/CloudflareDDNS.sh -e user@example.com -k 123defghijk4567pqrstuvw890 -z example.com -r demo.example.com -t A -l 900 -p false -m create
-
-## How to fix?
-# Syntax error: "(" unexpected -> dpkg-reconfigure dash -> No
+# git clone "https://github.com/hezhijie0327/CloudflareDDNS.git" && bash ./CloudflareDDNS/CloudflareDDNS.sh -e demo@zhijie.online -k 123defghijk4567pqrstuvw890 -z zhijie.online -r demo.zhijie.online -t A -l 3600 -p false -m update
 
 ## Configuration
 # Cloudflare Email Address
-XAuthEmail=""
+XAuthEmail="demo@zhijie.online"
 # Cloudflare API Key
-XAuthKey=""
+XAuthKey="123defghijk4567pqrstuvw890"
 # Zone Name
-ZoneName=""
+ZoneName="zhijie.online"
 # Record Name
-RecordName=""
+RecordName="demo.zhijie.online"
 # Type (A | AAAA)
-Type=""
+Type="A"
 # TTL (1 | 120 | 300 | 600 | 900 | 1800 | 3600 | 7200 | 18000 | 43200 | 86400)
-TTL=""
+TTL="3600"
 # Proxy Status (true | false)
-ProxyStatus=""
+ProxyStatus="false"
 # Running Mode (create | update | delete)
-RunningMode=""
+RunningMode="update"
 
 ## Parameter
 while getopts e:k:z:r:t:l:p:m: GetParameter; do
