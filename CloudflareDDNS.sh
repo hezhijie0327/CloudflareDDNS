@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.0.8
+# Current Version: 1.0.9
 
 ## How to get and use?
 # git clone "https://github.com/hezhijie0327/CloudflareDDNS.git" && bash ./CloudflareDDNS/CloudflareDDNS.sh -e demo@zhijie.online -k 123defghijk4567pqrstuvw890 -z zhijie.online -r demo.zhijie.online -t A -l 3600 -p false -m update
@@ -317,8 +317,8 @@ elif [ "${RunningMode}" == "update" ]; then
                         exit 1
                     else
                         if [ "${DNSRecord}" == "${WANIP}" ]; then
-                            echo "An error occurred during processing. WAN IP has not been changed."
-                            exit 1
+                            echo "No error occurred during processing. WAN IP has not been changed."
+                            exit 0
                         else
                             echo "Current DNS Record: ${DNSRecord}"
                             # Call GetPOSTResponse
