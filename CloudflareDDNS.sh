@@ -1,12 +1,12 @@
 #!/bin/bash
 
-# Current Version: 1.1.0
+# Current Version: 1.1.1
 
 ## How to get and use?
 # git clone "https://github.com/hezhijie0327/CloudflareDDNS.git" && bash ./CloudflareDDNS/CloudflareDDNS.sh -e demo@zhijie.online -k 123defghijk4567pqrstuvw890 -z zhijie.online -r demo.zhijie.online -t A -l 3600 -p false -m update
 
 ## Parameter
-while getopts e:k:z:r:t:l:p:m: GetParameter; do
+while getopts e:k:l:m:p:r:t:z GetParameter; do
     case ${GetParameter} in
         e) XAuthEmail="${OPTARG:-demo@zhijie.online}";;
         k) XAuthKey="${OPTARG:-123defghijk4567pqrstuvw890}";;
