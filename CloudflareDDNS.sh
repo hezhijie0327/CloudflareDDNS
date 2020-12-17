@@ -1,47 +1,21 @@
 #!/bin/bash
 
-# Current Version: 1.0.9
+# Current Version: 1.1.0
 
 ## How to get and use?
 # git clone "https://github.com/hezhijie0327/CloudflareDDNS.git" && bash ./CloudflareDDNS/CloudflareDDNS.sh -e demo@zhijie.online -k 123defghijk4567pqrstuvw890 -z zhijie.online -r demo.zhijie.online -t A -l 3600 -p false -m update
 
-## Configuration
-# Cloudflare Email Address
-XAuthEmail="demo@zhijie.online"
-# Cloudflare API Key
-XAuthKey="123defghijk4567pqrstuvw890"
-# Zone Name
-ZoneName="zhijie.online"
-# Record Name
-RecordName="demo.zhijie.online"
-# Type (A | AAAA)
-Type="A"
-# TTL (1 | 120 | 300 | 600 | 900 | 1800 | 3600 | 7200 | 18000 | 43200 | 86400)
-TTL="3600"
-# Proxy Status (true | false)
-ProxyStatus="false"
-# Running Mode (create | update | delete)
-RunningMode="update"
-
 ## Parameter
 while getopts e:k:z:r:t:l:p:m: GetParameter; do
     case ${GetParameter} in
-        # Cloudflare Email Address
-        e) XAuthEmail="${OPTARG}";;
-        # Cloudflare API Key
-        k) XAuthKey="${OPTARG}";;
-        # Zone Name
-        z) ZoneName="${OPTARG}";;
-        # Record Name
-        r) RecordName="${OPTARG}";;
-        # Type
-        t) Type="${OPTARG}";;
-        # TTL
-        l) TTL="${OPTARG}";;
-        # Proxy Status
-        p) ProxyStatus="${OPTARG}";;
-        # Running Mode
-        m) RunningMode="${OPTARG}";;
+        e) XAuthEmail="${OPTARG:-demo@zhijie.online}";;
+        k) XAuthKey="${OPTARG:-123defghijk4567pqrstuvw890}";;
+        l) TTL="${OPTARG:-3600}";;
+        m) RunningMode="${OPTARG:-update}";;
+        p) ProxyStatus="${OPTARG:-false}";;
+        r) RecordName="${OPTARG:-demo.zhijie.online}";;
+        t) Type="${OPTARG:-A}";;
+        z) ZoneName="${OPTARG:-zhijie.online}";;
     esac
 done
 
