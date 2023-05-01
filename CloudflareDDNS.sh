@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.1.9
+# Current Version: 1.2.0
 
 ## How to get and use?
 # git clone "https://github.com/hezhijie0327/CloudflareDDNS.git" && bash ./CloudflareDDNS/CloudflareDDNS.sh -e demo@zhijie.online -k 123defghijk4567pqrstuvw890 -z zhijie.online -r demo.zhijie.online -t A -l 3600 -p false -m update
@@ -49,7 +49,7 @@ function CheckConfigurationValidity() {
         if [ "${Type}" == "" ]; then
             echo "An error occurred during processing. Missing (Type) value, please check it and try again."
             exit 1
-        elif [ "${Type}" != "A" ] && [ "${Type}" != "AAAA" ]; then
+        elif [ "${Type}" != "A" ] && [ "${Type}" != "AAAA" ] && [ "${Type}" != "A_AAAA" ]; then
             echo "An error occurred during processing. Invalid (Type) value, please check it and try again."
             exit 1
         fi
@@ -241,38 +241,45 @@ if [ "${RunningMode}" == "create" ]; then
             echo "An error occurred during processing. Invalid (ZoneID) value, please check (ZoneName) value, and try again."
             exit 1
         else
-            echo "Current Zone ID: ${ZoneID}"
-            # Call GetRecordID
-            RecordID=$(GetRecordID)
-            if [ "${RecordID}" == "invalid" ]; then
-                echo "An error occurred during processing. Invalid (RecordID) value, please check your network connectivity, and try again."
-                exit 1
-            elif [ "${RecordID}" != "invalid" ] && [ "${RecordID}" != "false" ]; then
-                echo "An error occurred during processing. ${RecordName} has been existed."
-                exit 1
-            else
-                # Call GetWANIP
-                WANIP=$(GetWANIP)
-                if [ "${WANIP}" == "invalid" ]; then
-                    if [ "${Type}" == "A" ]; then
-                        echo "An error occurred during processing. Invalid (WANIP) value, please check your IPv4 connectivity."
-                        exit 1
-                    else
-                        echo "An error occurred during processing. Invalid (WANIP) value, please check your IPv6 connectivity."
-                        exit 1
-                    fi
+            function CreateQueue() {
+                # Call GetRecordID
+                RecordID=$(GetRecordID)
+                if [ "${RecordID}" == "invalid" ]; then
+                    echo "An error occurred during processing. Invalid (RecordID) value, please check your network connectivity, and try again."
+                    exit 1
+                elif [ "${RecordID}" != "invalid" ] && [ "${RecordID}" != "false" ]; then
+                    echo "An error occurred during processing. ${RecordName} has been existed."
+                    exit 1
                 else
-                    echo "Current WAN IP: ${WANIP}"
-                    # Call GetPOSTResponse
-                    POSTResponse=$(GetPOSTResponse)
-                    if [ "${POSTResponse}" == "true" ]; then
-                        echo "No error occurred during processing. ${RecordName} has been created."
-                        exit 0
+                    # Call GetWANIP
+                    WANIP=$(GetWANIP)
+                    if [ "${WANIP}" == "invalid" ]; then
+                        if [ "${Type}" == "A" ]; then
+                            echo "An error occurred during processing. Invalid (WANIP) value, please check your IPv4 connectivity."
+                            exit 1
+                        else
+                            echo "An error occurred during processing. Invalid (WANIP) value, please check your IPv6 connectivity."
+                            exit 1
+                        fi
                     else
-                        echo "An error occurred during processing. Invalid (POSTResponse) value, please check your network connectivity, and try again."
-                        exit 1
+                        echo "Current WAN IP: ${WANIP}"
+                        # Call GetPOSTResponse
+                        POSTResponse=$(GetPOSTResponse)
+                        if [ "${POSTResponse}" == "true" ]; then
+                            echo "No error occurred during processing. ${RecordName} has been created."
+                        else
+                            echo "An error occurred during processing. Invalid (POSTResponse) value, please check your network connectivity, and try again."
+                            exit 1
+                        fi
                     fi
                 fi
+            }
+            echo "Current Zone ID: ${ZoneID}"
+            if [ "${Type}" == "A_AAAA" ]; then
+                Type="A" && CreateQueue
+                Type="AAAA" && CreateQueue
+            else
+                CreateQueue
             fi
         fi
     fi
@@ -296,55 +303,61 @@ elif [ "${RunningMode}" == "update" ]; then
             echo "An error occurred during processing. Invalid (ZoneID) value, please check (ZoneName) value, and try again."
             exit 1
         else
-            echo "Current Zone ID: ${ZoneID}"
-            # Call GetRecordID
-            RecordID=$(GetRecordID)
-            if [ "${RecordID}" == "invalid" ]; then
-                echo "An error occurred during processing. Invalid (RecordID) value, please check your network connectivity, and try again."
-                exit 1
-            elif [ "${RecordID}" == "false" ]; then
-                echo "An error occurred during processing. ${RecordName} has not been existed."
-                exit 1
-            else
-                echo "Current Record ID: ${RecordID}"
-                # Call GetWANIP
-                WANIP=$(GetWANIP)
-                if [ "${WANIP}" == "invalid" ]; then
-                    if [ "${Type}" == "A" ]; then
-                        echo "An error occurred during processing. Invalid (WANIP) value, please check your IPv4 connectivity."
-                        exit 1
-                    else
-                        echo "An error occurred during processing. Invalid (WANIP) value, please check your IPv6 connectivity."
-                        exit 1
-                    fi
+            function UpdateQueue() {
+                # Call GetRecordID
+                RecordID=$(GetRecordID)
+                if [ "${RecordID}" == "invalid" ]; then
+                    echo "An error occurred during processing. Invalid (RecordID) value, please check your network connectivity, and try again."
+                    exit 1
+                elif [ "${RecordID}" == "false" ]; then
+                    echo "An error occurred during processing. ${RecordName} has not been existed."
+                    exit 1
                 else
-                    echo "Current WAN IP: ${WANIP}"
-                    # Call GetDNSRecord
-                    DNSRecord=$(GetDNSRecord)
-                    if [ "${DNSRecord}" == "invalid" ]; then
-                        echo "An error occurred during processing. Invalid (DNSRecord) value, please check your network connectivity, and try again."
-                        exit 1
-                    elif [ "${DNSRecord}" == "false" ]; then
-                        echo "An error occurred during processing. Invalid (DNSRecord) value, please check (ZoneName) and (RecordName) value, and try again."
-                        exit 1
-                    else
-                        if [ "${DNSRecord}" == "${WANIP}" ]; then
-                            echo "No error occurred during processing. WAN IP has not been changed."
-                            exit 0
+                    echo "Current Record ID: ${RecordID}"
+                    # Call GetWANIP
+                    WANIP=$(GetWANIP)
+                    if [ "${WANIP}" == "invalid" ]; then
+                        if [ "${Type}" == "A" ]; then
+                            echo "An error occurred during processing. Invalid (WANIP) value, please check your IPv4 connectivity."
+                            exit 1
                         else
-                            echo "Current DNS Record: ${DNSRecord}"
-                            # Call GetPOSTResponse
-                            PUTResponse=$(GetPUTResponse)
-                            if [ "${PUTResponse}" == "true" ]; then
-                                echo "No error occurred during processing. ${RecordName} has been updated."
-                                exit 0
+                            echo "An error occurred during processing. Invalid (WANIP) value, please check your IPv6 connectivity."
+                            exit 1
+                        fi
+                    else
+                        echo "Current WAN IP: ${WANIP}"
+                        # Call GetDNSRecord
+                        DNSRecord=$(GetDNSRecord)
+                        if [ "${DNSRecord}" == "invalid" ]; then
+                            echo "An error occurred during processing. Invalid (DNSRecord) value, please check your network connectivity, and try again."
+                            exit 1
+                        elif [ "${DNSRecord}" == "false" ]; then
+                            echo "An error occurred during processing. Invalid (DNSRecord) value, please check (ZoneName) and (RecordName) value, and try again."
+                            exit 1
+                        else
+                            if [ "${DNSRecord}" == "${WANIP}" ]; then
+                                echo "No error occurred during processing. WAN IP has not been changed."
                             else
-                                echo "An error occurred during processing. Invalid (PUTResponse) value, please check your network connectivity, and try again."
-                                exit 1
+                                echo "Current DNS Record: ${DNSRecord}"
+                                # Call GetPOSTResponse
+                                PUTResponse=$(GetPUTResponse)
+                                if [ "${PUTResponse}" == "true" ]; then
+                                    echo "No error occurred during processing. ${RecordName} has been updated."
+                                else
+                                    echo "An error occurred during processing. Invalid (PUTResponse) value, please check your network connectivity, and try again."
+                                    exit 1
+                                fi
                             fi
                         fi
                     fi
                 fi
+            }
+            echo "Current Zone ID: ${ZoneID}"
+            if [ "${Type}" == "A_AAAA" ]; then
+                Type="A" && UpdateQueue
+                Type="AAAA" && UpdateQueue
+            else
+                UpdateQueue
             fi
         fi
     fi
@@ -368,26 +381,33 @@ else
             echo "An error occurred during processing. Invalid (ZoneID) value, please check (ZoneName) value, and try again."
             exit 1
         else
-            echo "Current Zone ID: ${ZoneID}"
-            # Call GetRecordID
-            RecordID=$(GetRecordID)
-            if [ "${RecordID}" == "invalid" ]; then
-                echo "An error occurred during processing. Invalid (RecordID) value, please check your network connectivity, and try again."
-                exit 1
-            elif [ "${RecordID}" == "false" ]; then
-                echo "An error occurred during processing. ${RecordName} has not been existed."
-                exit 1
-            else
-                echo "Current Record ID: ${RecordID}"
-                # Call GetDELETEResponse
-                DELETEResponse=$(GetDELETEResponse)
-                if [ "${DELETEResponse}" == "true" ]; then
-                    echo "No error occurred during processing. ${RecordName} has been deleted."
-                    exit 0
-                else
-                    echo "An error occurred during processing. Invalid (DELETEResponse) value, please check your network connectivity, and try again."
+            function DeleteQueue() {
+                # Call GetRecordID
+                RecordID=$(GetRecordID)
+                if [ "${RecordID}" == "invalid" ]; then
+                    echo "An error occurred during processing. Invalid (RecordID) value, please check your network connectivity, and try again."
                     exit 1
+                elif [ "${RecordID}" == "false" ]; then
+                    echo "An error occurred during processing. ${RecordName} has not been existed."
+                    exit 1
+                else
+                    echo "Current Record ID: ${RecordID}"
+                    # Call GetDELETEResponse
+                    DELETEResponse=$(GetDELETEResponse)
+                    if [ "${DELETEResponse}" == "true" ]; then
+                        echo "No error occurred during processing. ${RecordName} has been deleted."
+                    else
+                        echo "An error occurred during processing. Invalid (DELETEResponse) value, please check your network connectivity, and try again."
+                        exit 1
+                    fi
                 fi
+            }
+            echo "Current Zone ID: ${ZoneID}"
+            if [ "${Type}" == "A_AAAA" ]; then
+                Type="A" && DeleteQueue
+                Type="AAAA" && DeleteQueue
+            else
+                DeleteQueue
             fi
         fi
     fi
