@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.1.7
+# Current Version: 1.1.8
 
 ## How to get and use?
 # git clone "https://github.com/hezhijie0327/CloudflareDDNS.git" && bash ./CloudflareDDNS/CloudflareDDNS.sh -e demo@zhijie.online -k 123defghijk4567pqrstuvw890 -z zhijie.online -r demo.zhijie.online -t A -l 3600 -p false -m update
@@ -151,7 +151,12 @@ function GetWANIP() {
     if [ $(CheckIPValid) == "" ]; then
         IP_RESULT=$(dig -${IPv4_v6:-4} +short ANY @resolver1.opendns.com myip.opendns.com)
         if [ $(CheckIPValid) == "" ]; then
-            echo "invalid"
+            IP_RESULT=$(curl -${IPv4_v6:-4} -s --connect-timeout 15 "https://api64.ipify.org")
+            if [ $(CheckIPValid) == "" ]; then
+                echo "invalid"
+            else
+                echo "${IP_RESULT}"
+            fi
         else
             echo "${IP_RESULT}"
         fi
