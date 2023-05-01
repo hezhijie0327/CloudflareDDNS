@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.1.8
+# Current Version: 1.1.9
 
 ## How to get and use?
 # git clone "https://github.com/hezhijie0327/CloudflareDDNS.git" && bash ./CloudflareDDNS/CloudflareDDNS.sh -e demo@zhijie.online -k 123defghijk4567pqrstuvw890 -z zhijie.online -r demo.zhijie.online -t A -l 3600 -p false -m update
@@ -67,6 +67,24 @@ function CheckConfigurationValidity() {
             echo "An error occurred during processing. Invalid (ProxyStatus) value, please check it and try again."
             exit 1
         fi
+    fi
+}
+# Check Environment Validity
+function CheckEnvironmentValidity() {
+    which "curl" > "/dev/null" 2>&1
+    if [ "$?" -eq "1" ]; then
+        echo "curl has not been installed!"
+        exit 1
+    fi
+    which "dig" > "/dev/null" 2>&1
+    if [ "$?" -eq "1" ]; then
+        echo "dig has not been installed!"
+        exit 1
+    fi
+    which "jq" > "/dev/null" 2>&1
+    if [ "$?" -eq "1" ]; then
+        echo "jq has not been installed!"
+        exit 1
     fi
 }
 # Get Account Name
@@ -201,6 +219,8 @@ function GetDELETEResponse() {
 ## Process
 # Call CheckConfigurationValidity
 CheckConfigurationValidity
+# Call CheckEnvironmentValidity
+CheckEnvironmentValidity
 if [ "${RunningMode}" == "create" ]; then
     # Call GetAccountName
     AccountName=$(GetAccountName)
