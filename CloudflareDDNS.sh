@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.1.4
+# Current Version: 1.1.5
 
 ## How to get and use?
 # git clone "https://github.com/hezhijie0327/CloudflareDDNS.git" && bash ./CloudflareDDNS/CloudflareDDNS.sh -e demo@zhijie.online -k 123defghijk4567pqrstuvw890 -z zhijie.online -r demo.zhijie.online -t A -l 3600 -p false -m update
@@ -102,10 +102,10 @@ function GetZoneID() {
 function GetRecordID() {
     CloudflareAPIv4Response=$(curl -s --connect-timeout 15 -X GET "https://api.cloudflare.com/client/v4/zones/${ZoneID}/dns_records?name=${RecordName}" -H "X-Auth-Email: ${XAuthEmail}" -H "X-Auth-Key: ${XAuthKey}" -H "Content-Type: application/json")
     if [ "$(echo ${CloudflareAPIv4Response} | jq -r '.success')" == "true" ]; then
-        if [ "$(echo ${CloudflareAPIv4Response} | jq -r '.result[] | {id} | .id')" == "" ]; then
+        if [ "$(echo ${CloudflareAPIv4Response} | jq -r '.result[] | select(.type == "${Type}") | {id} | .id')" == "" ]; then
             echo "false"
         else
-            echo "$(echo ${CloudflareAPIv4Response} | jq -r '.result[] | {id} | .id')"
+            echo "$(echo ${CloudflareAPIv4Response} | jq -r '.result[] | select(.type == "${Type}") | {id} | .id')"
         fi
     elif [ "$(echo ${CloudflareAPIv4Response} | jq -r '.success')" == "false" ]; then
         echo "false"
