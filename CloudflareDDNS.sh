@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.1.5
+# Current Version: 1.1.6
 
 ## How to get and use?
 # git clone "https://github.com/hezhijie0327/CloudflareDDNS.git" && bash ./CloudflareDDNS/CloudflareDDNS.sh -e demo@zhijie.online -k 123defghijk4567pqrstuvw890 -z zhijie.online -r demo.zhijie.online -t A -l 3600 -p false -m update
@@ -102,10 +102,15 @@ function GetZoneID() {
 function GetRecordID() {
     CloudflareAPIv4Response=$(curl -s --connect-timeout 15 -X GET "https://api.cloudflare.com/client/v4/zones/${ZoneID}/dns_records?name=${RecordName}" -H "X-Auth-Email: ${XAuthEmail}" -H "X-Auth-Key: ${XAuthKey}" -H "Content-Type: application/json")
     if [ "$(echo ${CloudflareAPIv4Response} | jq -r '.success')" == "true" ]; then
-        if [ "$(echo ${CloudflareAPIv4Response} | jq -r '.result[] | select(.type == "${Type}") | {id} | .id')" == "" ]; then
+        if [ "${Type}" == "A" ]; then
+            CloudflareAPIv4Response=$(echo ${CloudflareAPIv4Response} | jq -r '.result[] | select(.type == "A") | {id} | .id')
+        else
+            CloudflareAPIv4Response=$(echo ${CloudflareAPIv4Response} | jq -r '.result[] | select(.type == "AAAA") | {id} | .id')
+        fi
+        if [ "${CloudflareAPIv4Response}" == "" ]; then
             echo "false"
         else
-            echo "$(echo ${CloudflareAPIv4Response} | jq -r '.result[] | select(.type == "${Type}") | {id} | .id')"
+            echo "${CloudflareAPIv4Response}"
         fi
     elif [ "$(echo ${CloudflareAPIv4Response} | jq -r '.success')" == "false" ]; then
         echo "false"
@@ -260,6 +265,7 @@ elif [ "${RunningMode}" == "update" ]; then
         else
             echo "Current Zone ID: ${ZoneID}"
             # Call GetRecordID
+#            GetRecordID
             RecordID=$(GetRecordID)
             if [ "${RecordID}" == "invalid" ]; then
                 echo "An error occurred during processing. Invalid (RecordID) value, please check your network connectivity, and try again."
