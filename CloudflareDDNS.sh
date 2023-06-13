@@ -1,14 +1,15 @@
 #!/bin/bash
 
-# Current Version: 1.2.0
+# Current Version: 1.2.1
 
 ## How to get and use?
 # git clone "https://github.com/hezhijie0327/CloudflareDDNS.git" && bash ./CloudflareDDNS/CloudflareDDNS.sh -e demo@zhijie.online -k 123defghijk4567pqrstuvw890 -z zhijie.online -r demo.zhijie.online -t A -l 3600 -p false -m update
 
 ## Parameter
-while getopts e:k:l:m:p:r:t:z: GetParameter; do
+while getopts e:i:k:l:m:p:r:t:z: GetParameter; do
     case ${GetParameter} in
         e) XAuthEmail="${OPTARG}";;
+        i) StaticIP="${OPTARG}";;
         k) XAuthKey="${OPTARG}";;
         l) TTL="${OPTARG}";;
         m) RunningMode="${OPTARG}";;
@@ -165,13 +166,17 @@ function GetWANIP() {
     else
         IPv4_v6="6"
     fi
-    IP_RESULT=$(dig -${IPv4_v6:-4} +short TXT @ns1.google.com o-o.myaddr.l.google.com | tr -d '"')
-    if [ $(CheckIPValid) == "" ]; then
-        IP_RESULT=$(dig -${IPv4_v6:-4} +short ANY @resolver1.opendns.com myip.opendns.com)
+    if [ "${StaticIP}" == "" ]; then
+        IP_RESULT=$(dig -${IPv4_v6:-4} +short TXT @ns1.google.com o-o.myaddr.l.google.com | tr -d '"')
         if [ $(CheckIPValid) == "" ]; then
-            IP_RESULT=$(curl -${IPv4_v6:-4} -s --connect-timeout 15 "https://api64.ipify.org")
+            IP_RESULT=$(dig -${IPv4_v6:-4} +short ANY @resolver1.opendns.com myip.opendns.com)
             if [ $(CheckIPValid) == "" ]; then
-                echo "invalid"
+                IP_RESULT=$(curl -${IPv4_v6:-4} -s --connect-timeout 15 "https://api64.ipify.org")
+                if [ $(CheckIPValid) == "" ]; then
+                    echo "invalid"
+                else
+                    echo "${IP_RESULT}"
+                fi
             else
                 echo "${IP_RESULT}"
             fi
@@ -179,7 +184,7 @@ function GetWANIP() {
             echo "${IP_RESULT}"
         fi
     else
-        echo "${IP_RESULT}"
+        echo "${StaticIP}"
     fi
 }
 # Get POST Response
