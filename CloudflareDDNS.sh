@@ -1,9 +1,9 @@
 #!/bin/bash
 
-# Current Version: 1.2.6
+# Current Version: 1.2.7
 
 ## How to get and use?
-# git clone "https://github.com/hezhijie0327/CloudflareDDNS.git" && bash ./CloudflareDDNS/CloudflareDDNS.sh -e demo@zhijie.online -k 123defghijk4567pqrstuvw890 -z zhijie.online -r demo.zhijie.online -t A -l 3600 -i "" -p false -m update
+# git clone "https://github.com/hezhijie0327/CloudflareDDNS.git" && bash ./CloudflareDDNS/CloudflareDDNS.sh -e demo@zhijie.online -k 123defghijk4567pqrstuvw890 -z zhijie.online -r demo.zhijie.online -t A -l 3600 -i auto -p false -m update
 
 ## Parameter
 while getopts e:i:k:l:m:p:r:t:z: GetParameter; do
@@ -166,7 +166,7 @@ function GetWANIP() {
     else
         IPv4_v6="6"
     fi
-    if [ "${StaticIP}" == "" ]; then
+    if [ "${StaticIP}" == "auto" ]; then
         IP_RESULT=$(dig -${IPv4_v6:-4} +short TXT @ns1.google.com o-o.myaddr.l.google.com | tr -d '"')
         if [[ $(CheckIPValid) = "" ]]; then
             IP_RESULT=$(dig -${IPv4_v6:-4} +short ANY @resolver1.opendns.com myip.opendns.com)
