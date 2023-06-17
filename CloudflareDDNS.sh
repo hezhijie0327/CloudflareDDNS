@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.2.5
+# Current Version: 1.2.6
 
 ## How to get and use?
 # git clone "https://github.com/hezhijie0327/CloudflareDDNS.git" && bash ./CloudflareDDNS/CloudflareDDNS.sh -e demo@zhijie.online -k 123defghijk4567pqrstuvw890 -z zhijie.online -r demo.zhijie.online -t A -l 3600 -i "" -p false -m update
@@ -8,15 +8,15 @@
 ## Parameter
 while getopts e:i:k:l:m:p:r:t:z: GetParameter; do
     case ${GetParameter} in
-        e) XAuthEmail="${OPTARG:-demo@zhijie.online}";;
+        e) XAuthEmail="${OPTARG}";;
         i) StaticIP="${OPTARG}";;
-        k) XAuthKey="${OPTARG:-123defghijk4567pqrstuvw890}";;
-        l) TTL="${OPTARG:-1}";;
-        m) RunningMode="${OPTARG:-update}";;
-        p) ProxyStatus="${OPTARG:-false}";;
-        r) RecordName="${OPTARG:-demo.zhijie.online}";;
-        t) Type="${OPTARG:A_AAAA}";;
-        z) ZoneName="${OPTARG:-zhijie.online}";;
+        k) XAuthKey="${OPTARG}";;
+        l) TTL="${OPTARG}";;
+        m) RunningMode="${OPTARG}";;
+        p) ProxyStatus="${OPTARG}";;
+        r) RecordName="${OPTARG}";;
+        t) Type="${OPTARG}";;
+        z) ZoneName="${OPTARG}";;
     esac
 done
 
