@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.2.7
+# Current Version: 1.2.8
 
 ## How to get and use?
 # git clone "https://github.com/hezhijie0327/CloudflareDDNS.git" && bash ./CloudflareDDNS/CloudflareDDNS.sh -e demo@zhijie.online -k 123defghijk4567pqrstuvw890 -z zhijie.online -r demo.zhijie.online -t A -l 3600 -i auto -p false -m update
@@ -184,7 +184,7 @@ function GetWANIP() {
             echo "${IP_RESULT}"
         fi
     else
-        if [ $(echo "${StaticIP}" | grep ",") != "" ]; then
+        if [[ $(echo "${StaticIP}" | grep ",") != "" ]]; then
             if [ "${Type}" == "A" ]; then
                 IP_RESULT=$(echo "${StaticIP}" | cut -d ',' -f 1)
             else
