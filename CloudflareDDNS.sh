@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.2.9
+# Current Version: 1.3.0
 
 ## How to get and use?
 # git clone "https://github.com/hezhijie0327/CloudflareDDNS.git" && bash ./CloudflareDDNS/CloudflareDDNS.sh -e demo@zhijie.online -k 123defghijk4567pqrstuvw890 -z zhijie.online -r demo.zhijie.online -t A -l 3600 -i auto -p false -m update
@@ -163,11 +163,11 @@ function GetWANIP() {
     fi
     if [ "${StaticIP:-auto}" == "auto" ]; then
         IP_RESULT=$(dig -${IPv4_v6:-4} +short TXT @ns1.google.com o-o.myaddr.l.google.com | tr -d '"' | grep -E "${IP_REGEX}")
-        if [[ "${IP_RESULT}" = "" ]]; then
+        if [ "${IP_RESULT}" == "" ]; then
             IP_RESULT=$(dig -${IPv4_v6:-4} +short ANY @resolver1.opendns.com myip.opendns.com | grep -E "${IP_REGEX}")
-            if [[ "${IP_RESULT}" = "" ]]; then
+            if [ "${IP_RESULT}" == "" ]; then
                 IP_RESULT=$(curl -${IPv4_v6:-4} -s --connect-timeout 15 "https://api64.ipify.org" | grep -E "${IP_REGEX}")
-                if [[ "${IP_RESULT}" = "" ]]; then
+                if [ "${IP_RESULT}" == "" ]; then
                     echo "invalid"
                 else
                     echo "${IP_RESULT}"
@@ -185,14 +185,14 @@ function GetWANIP() {
             else
                 IP_RESULT=$(echo "${StaticIP}" | cut -d ',' -f 2 | grep -E "${IP_REGEX}")
             fi
-            if [[ "${IP_RESULT}" = "" ]]; then
+            if [ "${IP_RESULT}" == "" ]; then
                 echo "invalid"
             else
                 echo "${IP_RESULT}"
             fi
         else
             IP_RESULT=$(echo "${StaticIP}" | grep -E "${IP_REGEX}")
-            if [[ "${IP_RESULT}" = "" ]]; then
+            if [ "${IP_RESULT}" == "" ]; then
                 echo "invalid"
             else
                 echo "${IP_RESULT}"
