@@ -19,6 +19,7 @@ function CleanupCurrentContainer() {
 # Create New Container
 function CreateNewContainer() {
     docker run --name ${REPO} --net host --restart=always \
+        -v /etc/resolv.conf:/etc/resolv.conf:ro \
         -e XAUTHEMAIL="demo@zhijie.online" \
         -e XAUTHKEY="123defghijk4567pqrstuvw890" \
         -e ZONENAME="zhijie.online" \
