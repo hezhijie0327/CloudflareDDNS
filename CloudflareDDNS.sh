@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.3.4
+# Current Version: 1.3.5
 
 ## How to get and use?
 # git clone "https://github.com/hezhijie0327/CloudflareDDNS.git" && bash ./CloudflareDDNS/CloudflareDDNS.sh -e demo@zhijie.online -k 123defghijk4567pqrstuvw890 -z zhijie.online -r demo.zhijie.online -t A -l 3600 -i auto -p false -m update
@@ -226,7 +226,7 @@ function GetDELETEResponse() {
 
 ## Process
 # Show Current Version
-echo "Currnet Version: $(cat ${0} | grep 'Current Version:' | sed 's/Current Version: //g')"
+echo "Current Version: $(grep -E '^# Current Version: ' ${0} | cut -d : -f 2 | sed 's/^ //g')"
 # Call CheckConfigurationValidity
 CheckConfigurationValidity
 # Call CheckEnvironmentValidity
