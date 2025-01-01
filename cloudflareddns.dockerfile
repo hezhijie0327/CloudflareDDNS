@@ -1,6 +1,6 @@
-# Current Version: 1.0.0
+# Current Version: 1.0.1
 
-FROM hezhijie0327/base:alpine AS GET_INFO
+FROM hezhijie0327/module:alpine AS GET_INFO
 
 FROM hezhijie0327/gpg:latest AS GPG_SIGN
 
