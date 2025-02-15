@@ -1,4 +1,4 @@
-# Current Version: 1.0.2
+# Current Version: 1.0.3
 
 name: Build & Push hezhijie0327/CloudflareDDNS
 
@@ -25,7 +25,13 @@ jobs:
               with:
                   username: ${{ secrets.DOCKERHUB_USERNAME }}
                   password: ${{ secrets.DOCKERHUB_TOKEN }}
-            - name: Step 5 - Build cloudflareddns:latest
+            - name: Step 5 - Login to GHCR
+              uses: docker/login-action@v3
+              with:
+                  registry: ghcr.io
+                  username: ${{ secrets.GHCR_USERNAME }}
+                  password: ${{ secrets.GHCR_TOKEN }}
+            - name: Step 6 - Build cloudflareddns:latest
               uses: docker/build-push-action@v5
               with:
                   file: ./cloudflareddns.dockerfile
@@ -33,3 +39,4 @@ jobs:
                   push: true
                   tags: |
                       hezhijie0327/cloudflareddns:latest
+                      ghcr.io/hezhijie0327/cloudflareddns:latest
