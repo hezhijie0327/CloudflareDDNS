@@ -1,10 +1,6 @@
-# Current Version: 1.0.3
-
-FROM hezhijie0327/module:alpine AS get_info
+# Current Version: 1.0.4
 
 FROM alpine:latest AS build_baseos
-
-COPY --from=get_info /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
 
 COPY ./CloudflareDDNS.sh /opt/CloudflareDDNS.sh
 
@@ -12,6 +8,7 @@ RUN sed -i "s/dl-cdn.alpinelinux.org/mirrors.ustc.edu.cn/g" "/etc/apk/repositori
     && apk update \
     && apk add --no-cache bind-tools curl jq \
     && apk upgrade --no-cache \
+    && curl -s --connect-timeout 15 "https://curl.se/ca/cacert.pem" > "/etc/ssl/certs/cacert.pem" && mv "/etc/ssl/certs/cacert.pem" "/etc/ssl/certs/ca-certificates.crt"
     && rm -rf /tmp/* /var/cache/apk/*
 
 FROM scratch
