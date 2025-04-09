@@ -1,10 +1,10 @@
-# Current Version: 1.0.2
+# Current Version: 1.0.3
 
-FROM hezhijie0327/module:alpine AS GET_INFO
+FROM hezhijie0327/module:alpine AS get_info
 
-FROM alpine:latest AS BUILD_BASEOS
+FROM alpine:latest AS build_baseos
 
-COPY --from=GET_INFO /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
+COPY --from=get_info /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
 
 COPY ./CloudflareDDNS.sh /opt/CloudflareDDNS.sh
 
@@ -16,7 +16,7 @@ RUN sed -i "s/dl-cdn.alpinelinux.org/mirrors.ustc.edu.cn/g" "/etc/apk/repositori
 
 FROM scratch
 
-COPY --from=BUILD_BASEOS / /
+COPY --from=build_baseos / /
 
 ENV XAUTHEMAIL=${XAUTHEMAIL} XAUTHKEY=${XAUTHKEY} ZONENAME=${ZONENAME} RECORDNAME=${RECORDNAME} TYPE=${TYPE} TTL=${TTL} STATICIP=${STATICIP} PROXYSTATUS=${PROXYSTATUS} RUNNINGMODE=${RUNNINGMODE} UPDATEFREQUENCY=${UPDATEFREQUENCY}
 
