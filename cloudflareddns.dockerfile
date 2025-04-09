@@ -1,18 +1,12 @@
-# Current Version: 1.0.1
+# Current Version: 1.0.2
 
 FROM hezhijie0327/module:alpine AS GET_INFO
-
-FROM hezhijie0327/gpg:latest AS GPG_SIGN
-
-COPY ./CloudflareDDNS.sh /tmp/BUILDKIT/CloudflareDDNS.sh
-
-RUN gpg --detach-sign --passphrase "$(cat '/root/.gnupg/ed25519_passphrase.key' | base64 -d)" --pinentry-mode "loopback" "/tmp/BUILDKIT/CloudflareDDNS.sh"
 
 FROM alpine:latest AS BUILD_BASEOS
 
 COPY --from=GET_INFO /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
 
-COPY --from=GPG_SIGN /tmp/BUILDKIT /opt
+COPY ./CloudflareDDNS.sh /opt/CloudflareDDNS.sh
 
 RUN sed -i "s/dl-cdn.alpinelinux.org/mirrors.ustc.edu.cn/g" "/etc/apk/repositories" \
     && apk update \
