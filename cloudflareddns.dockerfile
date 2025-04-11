@@ -1,4 +1,4 @@
-# Current Version: 1.0.4
+# Current Version: 1.0.5
 
 FROM alpine:latest AS build_baseos
 
@@ -8,7 +8,7 @@ RUN sed -i "s/dl-cdn.alpinelinux.org/mirrors.ustc.edu.cn/g" "/etc/apk/repositori
     && apk update \
     && apk add --no-cache bind-tools curl jq \
     && apk upgrade --no-cache \
-    && curl -s --connect-timeout 15 "https://curl.se/ca/cacert.pem" > "/etc/ssl/certs/cacert.pem" && mv "/etc/ssl/certs/cacert.pem" "/etc/ssl/certs/ca-certificates.crt"
+    && curl -s --connect-timeout 15 "https://curl.se/ca/cacert.pem" > "/etc/ssl/certs/cacert.pem" && mv "/etc/ssl/certs/cacert.pem" "/etc/ssl/certs/ca-certificates.crt" \
     && rm -rf /tmp/* /var/cache/apk/*
 
 FROM scratch
