@@ -1,12 +1,11 @@
-# Current Version: 1.0.3
+# Current Version: 1.0.4
 
 name: Build & Push hezhijie0327/CloudflareDDNS
 
 on:
-    push:
-        branches: [main]
     schedule:
         - cron: "0 0 1 * *"
+    workflow_dispatch:
 
 jobs:
     build-package-cloudflareddns:
