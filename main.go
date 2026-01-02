@@ -27,8 +27,11 @@ var (
 
 // Config 配置结构
 type Config struct {
-	XAuthEmail     string `json:"x_auth_email"`
-	XAuthKey       string `json:"x_auth_key"`
+	APIToken string `json:"api_token"`
+	// Deprecated: Use api_token instead
+	XAuthEmail string `json:"x_auth_email,omitempty"`
+	// Deprecated: Use api_token instead
+	XAuthKey       string `json:"x_auth_key,omitempty"`
 	ZoneName       string `json:"zone_name"`
 	RecordName     string `json:"record_name"`
 	Type           string `json:"type,omitempty"`            // A, AAAA, or A_AAAA (default: A)
@@ -92,6 +95,13 @@ func main() {
 
 	// 设置默认值
 	config.setDefaults()
+
+	// 检查是否使用了已弃用的认证方式
+	if config.XAuthEmail != "" && config.XAuthKey != "" && config.APIToken == "" {
+		fmt.Printf("⚠️  WARNING: Using deprecated authentication method (x_auth_email + x_auth_key)\n")
+		fmt.Printf("⚠️  Please migrate to using 'api_token' instead\n")
+		fmt.Printf("⚠️  You can create an API token at: https://dash.cloudflare.com/profile/api-tokens\n\n")
+	}
 
 	// 验证配置
 	if err := config.configValidate(); err != nil {
@@ -217,8 +227,11 @@ func (c *Config) configValidate() error {
 	validModes := map[string]bool{"upsert": true, "delete": true}
 	validTypes := map[string]bool{"A": true, "AAAA": true, "A_AAAA": true}
 
-	if c.XAuthEmail == "" || c.XAuthKey == "" || c.ZoneName == "" || c.RecordName == "" {
-		return fmt.Errorf("missing required fields (x_auth_email, x_auth_key, zone_name, record_name)")
+	if c.APIToken == "" && (c.XAuthEmail == "" || c.XAuthKey == "") {
+		return fmt.Errorf("missing required authentication (api_token or x_auth_email + x_auth_key)")
+	}
+	if c.ZoneName == "" || c.RecordName == "" {
+		return fmt.Errorf("missing required fields (zone_name, record_name)")
 	}
 
 	if !validModes[c.Mode] {
@@ -241,8 +254,7 @@ func (c *Config) configValidate() error {
 func generateExampleConfig() {
 	updateInterval := 300
 	config := &Config{
-		XAuthEmail:     "your-cloudflare-email@example.com",
-		XAuthKey:       "your-cloudflare-api-key",
+		APIToken:       "your-cloudflare-api-token",
 		ZoneName:       "example.com",
 		RecordName:     "ddns.example.com",
 		Type:           "A_AAAA",
@@ -298,8 +310,14 @@ func (h *HTTPClient) request(method, path string, payload interface{}) (*Cloudfl
 		return nil, err
 	}
 
-	req.Header.Set("X-Auth-Email", h.config.XAuthEmail)
-	req.Header.Set("X-Auth-Key", h.config.XAuthKey)
+	// 支持新的 API Token 认证方式
+	if h.config.APIToken != "" {
+		req.Header.Set("Authorization", "Bearer "+h.config.APIToken)
+	} else {
+		// 向后兼容旧的认证方式
+		req.Header.Set("X-Auth-Email", h.config.XAuthEmail)
+		req.Header.Set("X-Auth-Key", h.config.XAuthKey)
+	}
 	req.Header.Set("Content-Type", "application/json")
 
 	resp, err := h.client.Do(req)

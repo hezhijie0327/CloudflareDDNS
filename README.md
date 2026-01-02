@@ -15,7 +15,7 @@
 - 🎯 **双操作模式**：创建/更新 DNS 记录或删除记录
 - 🐳 **Docker 支持**：多架构 Docker 镜像（linux/amd64、linux/arm64）
 - ⚡ **快速轻量**：由 Go 编译的单个二进制文件，依赖最少
-- 🔒 **安全**：使用 Cloudflare 的 X-Auth-Email 和 X-Auth-Key 认证
+- 🔒 **安全**：支持 Cloudflare API Token（推荐）或传统的 X-Auth-Email/X-Auth-Key 认证
 
 ### 快速开始
 
@@ -82,8 +82,9 @@ go build -o cloudflareddns main.go
 
 | 字段 | 类型 | 必填 | 说明 |
 |-------|------|------|------|
-| `x_auth_email` | string | ✅ | 您的 Cloudflare 账户邮箱 |
-| `x_auth_key` | string | ✅ | 您的 Cloudflare API 密钥（全局 API 密钥或源 CA 密钥） |
+| `api_token` | string | ✅ | 您的 Cloudflare API Token（推荐） |
+| `x_auth_email` | string | ❌ | ~~您的 Cloudflare 账户邮箱~~（已弃用，请使用 api_token） |
+| `x_auth_key` | string | ❌ | ~~您的 Cloudflare API 密钥~~（已弃用，请使用 api_token） |
 | `zone_name` | string | ✅ | 您的域名（如 `example.com`） |
 | `record_name` | string | ✅ | 完整的 DNS 记录名称（如 `ddns.example.com`） |
 | `type` | string | ❌ | 记录类型：`A`、`AAAA` 或 `A_AAAA`（默认：`A`） |
@@ -129,8 +130,7 @@ go build -o cloudflareddns main.go
 
 ```json
 {
-  "x_auth_email": "user@example.com",
-  "x_auth_key": "123456789abcdef",
+  "api_token": "your_cloudflare_api_token",
   "zone_name": "example.com",
   "record_name": "home.example.com",
   "type": "A",
@@ -145,8 +145,7 @@ go build -o cloudflareddns main.go
 
 ```json
 {
-  "x_auth_email": "user@example.com",
-  "x_auth_key": "123456789abcdef",
+  "api_token": "your_cloudflare_api_token",
   "zone_name": "example.com",
   "record_name": "home.example.com",
   "type": "A_AAAA",
@@ -237,6 +236,21 @@ docker buildx build --platform linux/amd64,linux/arm64 -t cloudflareddns:latest 
 
 ### 获取 Cloudflare API 凭证
 
+#### 方式一：使用 API Token（推荐）
+
+1. 登录您的 [Cloudflare 控制台](https://dash.cloudflare.com/)
+2. 前往 **我的个人资料** → **API 令牌**
+3. 点击 **创建令牌**
+4. 在创建 API Token 时，需要配置以下权限：
+   - **帐户** → **帐户设置** → **读取**
+   - **区域** → **区域设置** → **编辑**
+   - **区域** → **区域** → **编辑**
+   - **区域** → **DNS** → **编辑**
+5. 可以选择 **区域资源** 来限制 Token 只能访问特定域名
+6. 创建后，复制 Token 并填写到配置文件的 `api_token` 字段
+
+#### 方式二：使用全局 API 密钥（已弃用）
+
 1. 登录您的 [Cloudflare 控制台](https://dash.cloudflare.com/)
 2. 前往 **我的个人资料** → **API 令牌**或**全局 API 密钥**
 3. **邮箱**：使用您的账户邮箱
@@ -244,7 +258,7 @@ docker buildx build --platform linux/amd64,linux/arm64 -t cloudflareddns:latest 
    - **全局 API 密钥**（在"全局 API 密钥"部分找到）
    - **源 CA 密钥**（用于创建证书）
 
-⚠️ **注意**：此工具使用 `X-Auth-Email` 和 `X-Auth-Key` 请求头，而非 API 令牌。
+⚠️ **注意**：为了安全起见，推荐使用 API Token 方式。全局 API 密钥拥有账户的完全访问权限，风险较高。
 
 ### 输出示例
 
@@ -348,8 +362,9 @@ Create a `config.json` file in the same directory as the binary, or generate an 
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `x_auth_email` | string | ✅ | Your Cloudflare account email |
-| `x_auth_key` | string | ✅ | Your Cloudflare API key (Global API Key or Origin CA Key) |
+| `api_token` | string | ✅ | Your Cloudflare API Token (recommended) |
+| `x_auth_email` | string | ❌ | ~~Your Cloudflare account email~~ (deprecated, use api_token instead) |
+| `x_auth_key` | string | ❌ | ~~Your Cloudflare API key~~ (deprecated, use api_token instead) |
 | `zone_name` | string | ✅ | Your domain name (e.g., `example.com`) |
 | `record_name` | string | ✅ | Full DNS record name (e.g., `ddns.example.com`) |
 | `type` | string | ❌ | Record type: `A`, `AAAA`, or `A_AAAA` (default: `A`) |
@@ -503,6 +518,21 @@ docker buildx build --platform linux/amd64,linux/arm64 -t cloudflareddns:latest 
 
 ### Getting Cloudflare API Credentials
 
+#### Method 1: Using API Token (Recommended)
+
+1. Log in to your [Cloudflare Dashboard](https://dash.cloudflare.com/)
+2. Go to **My Profile** → **API Tokens**
+3. Click **Create Token**
+4. When creating the API Token, configure the following permissions:
+   - **Account** → **Account Settings** → **Read**
+   - **Zone** → **Zone Settings** → **Edit**
+   - **Zone** → **Zone** → **Edit**
+   - **Zone** → **DNS** → **Edit**
+5. Optionally, you can restrict the token to specific zones under **Zone Resources**
+6. After creation, copy the token and add it to the `api_token` field in your config file
+
+#### Method 2: Using Global API Key (Deprecated)
+
 1. Log in to your [Cloudflare Dashboard](https://dash.cloudflare.com/)
 2. Go to **My Profile** → **API Tokens** or **Global API Key**
 3. For **Email**: Use your account email
@@ -510,7 +540,7 @@ docker buildx build --platform linux/amd64,linux/arm64 -t cloudflareddns:latest 
    - **Global API Key** (found under "Global API Key" section)
    - **Origin CA Key** (for creating certificates)
 
-⚠️ **Note**: This tool uses the `X-Auth-Email` and `X-Auth-Key` headers, not API tokens.
+⚠️ **Note**: For security reasons, using API Token is recommended. Global API Keys have full access to your account and pose a higher security risk.
 
 ### Output Example
 
