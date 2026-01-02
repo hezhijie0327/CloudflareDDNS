@@ -396,6 +396,7 @@ func (h *HTTPClient) getIPFromCloudflareTrace(recordType string) (string, error)
 	client := &http.Client{
 		Timeout: RequestTimeout,
 		Transport: &http.Transport{
+			Proxy: http.ProxyFromEnvironment,
 			DialContext: func(ctx context.Context, _, address string) (net.Conn, error) {
 				dialer := net.Dialer{
 					Timeout: RequestTimeout,
