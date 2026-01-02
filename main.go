@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -380,7 +381,38 @@ func (h *HTTPClient) parseStaticIP(recordType string) (string, error) {
 
 // getIPFromCloudflareTrace 从Cloudflare trace获取IP
 func (h *HTTPClient) getIPFromCloudflareTrace(recordType string) (string, error) {
-	resp, err := h.client.Get(CloudflareAPI + "/cdn-cgi/trace")
+	// 根据记录类型确定网络类型
+	var networkType string
+	switch recordType {
+	case "A":
+		networkType = "tcp4" // 强制 IPv4
+	case "AAAA":
+		networkType = "tcp6" // 强制 IPv6
+	default:
+		networkType = "tcp" // 默认双栈
+	}
+
+	// 创建强制使用指定网络协议的HTTP客户端
+	client := &http.Client{
+		Timeout: RequestTimeout,
+		Transport: &http.Transport{
+			Proxy: http.ProxyFromEnvironment,
+			DialContext: func(ctx context.Context, _, address string) (net.Conn, error) {
+				dialer := net.Dialer{
+					Timeout:   RequestTimeout,
+					KeepAlive: 30 * time.Second,
+				}
+				return dialer.DialContext(ctx, networkType, address)
+			},
+			ForceAttemptHTTP2:     true,
+			MaxIdleConns:          100,
+			IdleConnTimeout:       90 * time.Second,
+			TLSHandshakeTimeout:   10 * time.Second,
+			ExpectContinueTimeout: 1 * time.Second,
+		},
+	}
+
+	resp, err := client.Get(CloudflareAPI + "/cdn-cgi/trace")
 	if err != nil {
 		return "", err
 	}
