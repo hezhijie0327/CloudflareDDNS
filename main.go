@@ -37,7 +37,7 @@ type Config struct {
 // CloudflareResponse API响应结构
 type CloudflareResponse struct {
 	Success bool                     `json:"success"`
-	Result  []map[string]interface{} `json:"result"`
+	Result  interface{}              `json:"result"`
 	Errors  []map[string]interface{} `json:"errors"`
 }
 
@@ -67,7 +67,7 @@ func main() {
 
 	// 处理特殊参数
 	if *showVersion {
-		fmt.Printf("Cloudflare DDNS Tool v%s\n", getVersion())
+		fmt.Printf("Cloudflare DDNS Tool %s\n", getVersion())
 		return
 	}
 
@@ -76,7 +76,7 @@ func main() {
 		return
 	}
 
-	fmt.Printf("🚀 Cloudflare DDNS Tool v%s\n\n", getVersion())
+	fmt.Printf("🚀 Cloudflare DDNS Tool %s\n\n", getVersion())
 
 	// 加载配置
 	config, err := loadConfig(*configPath)
@@ -285,8 +285,8 @@ func (h *HTTPClient) getAccountName() (string, error) {
 		return "", err
 	}
 
-	if len(resp.Result) > 0 {
-		if name, ok := resp.Result[0]["name"].(string); ok {
+	if results, ok := resp.Result.([]map[string]interface{}); ok && len(results) > 0 {
+		if name, ok := results[0]["name"].(string); ok {
 			return name, nil
 		}
 	}
@@ -301,8 +301,8 @@ func (h *HTTPClient) getZoneID() (string, error) {
 		return "", err
 	}
 
-	if len(resp.Result) > 0 {
-		if id, ok := resp.Result[0]["id"].(string); ok {
+	if results, ok := resp.Result.([]map[string]interface{}); ok && len(results) > 0 {
+		if id, ok := results[0]["id"].(string); ok {
 			return id, nil
 		}
 	}
@@ -317,8 +317,8 @@ func (h *HTTPClient) getRecordID(zoneID, recordType string) (string, error) {
 		return "", err
 	}
 
-	if len(resp.Result) > 0 {
-		if id, ok := resp.Result[0]["id"].(string); ok {
+	if results, ok := resp.Result.([]map[string]interface{}); ok && len(results) > 0 {
+		if id, ok := results[0]["id"].(string); ok {
 			return id, nil
 		}
 	}
@@ -333,8 +333,8 @@ func (h *HTTPClient) getDNSRecordContent(zoneID, recordID string) (string, error
 		return "", err
 	}
 
-	if len(resp.Result) > 0 {
-		if content, ok := resp.Result[0]["content"].(string); ok {
+	if result, ok := resp.Result.(map[string]interface{}); ok {
+		if content, ok := result["content"].(string); ok {
 			return content, nil
 		}
 	}
