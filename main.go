@@ -285,9 +285,11 @@ func (h *HTTPClient) getAccountName() (string, error) {
 		return "", err
 	}
 
-	if results, ok := resp.Result.([]map[string]interface{}); ok && len(results) > 0 {
-		if name, ok := results[0]["name"].(string); ok {
-			return name, nil
+	if results, ok := resp.Result.([]interface{}); ok && len(results) > 0 {
+		if result, ok := results[0].(map[string]interface{}); ok {
+			if name, ok := result["name"].(string); ok {
+				return name, nil
+			}
 		}
 	}
 
@@ -301,9 +303,11 @@ func (h *HTTPClient) getZoneID() (string, error) {
 		return "", err
 	}
 
-	if results, ok := resp.Result.([]map[string]interface{}); ok && len(results) > 0 {
-		if id, ok := results[0]["id"].(string); ok {
-			return id, nil
+	if results, ok := resp.Result.([]interface{}); ok && len(results) > 0 {
+		if result, ok := results[0].(map[string]interface{}); ok {
+			if id, ok := result["id"].(string); ok {
+				return id, nil
+			}
 		}
 	}
 
@@ -317,9 +321,11 @@ func (h *HTTPClient) getRecordID(zoneID, recordType string) (string, error) {
 		return "", err
 	}
 
-	if results, ok := resp.Result.([]map[string]interface{}); ok && len(results) > 0 {
-		if id, ok := results[0]["id"].(string); ok {
-			return id, nil
+	if results, ok := resp.Result.([]interface{}); ok && len(results) > 0 {
+		if result, ok := results[0].(map[string]interface{}); ok {
+			if id, ok := result["id"].(string); ok {
+				return id, nil
+			}
 		}
 	}
 
