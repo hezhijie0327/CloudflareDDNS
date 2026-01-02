@@ -66,8 +66,7 @@ go build -o cloudflareddns main.go
 
 ```json
 {
-  "x_auth_email": "your_email@example.com",
-  "x_auth_key": "your_cloudflare_api_key",
+  "api_token": "your_cloudflare_api_token",
   "zone_name": "example.com",
   "record_name": "ddns.example.com",
   "type": "A",
@@ -160,8 +159,7 @@ go build -o cloudflareddns main.go
 
 ```json
 {
-  "x_auth_email": "user@example.com",
-  "x_auth_key": "123456789abcdef",
+  "api_token": "your_cloudflare_api_token",
   "zone_name": "example.com",
   "record_name": "server.example.com",
   "type": "A",
@@ -176,8 +174,7 @@ go build -o cloudflareddns main.go
 
 ```json
 {
-  "x_auth_email": "user@example.com",
-  "x_auth_key": "123456789abcdef",
+  "api_token": "your_cloudflare_api_token",
   "zone_name": "example.com",
   "record_name": "old.example.com",
   "mode": "delete"
@@ -213,25 +210,6 @@ golangci-lint fmt
 ```bash
 # 为当前平台编译
 go build -o cloudflareddns main.go
-
-# 为多平台编译
-GOOS=linux GOARCH=amd64 go build -o cloudflareddns-linux-amd64 main.go
-GOOS=linux GOARCH=arm64 go build -o cloudflareddns-linux-arm64 main.go
-```
-
-### Docker
-
-本项目包含多阶段 Dockerfile 用于构建最小化镜像：
-
-```bash
-# 为 linux/amd64 构建
-docker buildx build --platform linux/amd64 -t cloudflareddns:amd64 .
-
-# 为 linux/arm64 构建
-docker buildx build --platform linux/arm64 -t cloudflareddns:arm64 .
-
-# 为两种架构同时构建
-docker buildx build --platform linux/amd64,linux/arm64 -t cloudflareddns:latest .
 ```
 
 ### 获取 Cloudflare API 凭证
@@ -256,7 +234,6 @@ docker buildx build --platform linux/amd64,linux/arm64 -t cloudflareddns:latest 
 3. **邮箱**：使用您的账户邮箱
 4. **API 密钥**：您可以使用以下任一选项：
    - **全局 API 密钥**（在"全局 API 密钥"部分找到）
-   - **源 CA 密钥**（用于创建证书）
 
 ⚠️ **注意**：为了安全起见，推荐使用 API Token 方式。全局 API 密钥拥有账户的完全访问权限，风险较高。
 
@@ -346,8 +323,7 @@ Create a `config.json` file in the same directory as the binary, or generate an 
 
 ```json
 {
-  "x_auth_email": "your_email@example.com",
-  "x_auth_key": "your_cloudflare_api_key",
+  "api_token": "your_cloudflare_api_token",
   "zone_name": "example.com",
   "record_name": "ddns.example.com",
   "type": "A",
@@ -410,8 +386,7 @@ Create a `config.json` file in the same directory as the binary, or generate an 
 
 ```json
 {
-  "x_auth_email": "user@example.com",
-  "x_auth_key": "123456789abcdef",
+  "api_token": "your_cloudflare_api_token",
   "zone_name": "example.com",
   "record_name": "home.example.com",
   "type": "A",
@@ -426,8 +401,7 @@ Create a `config.json` file in the same directory as the binary, or generate an 
 
 ```json
 {
-  "x_auth_email": "user@example.com",
-  "x_auth_key": "123456789abcdef",
+  "api_token": "your_cloudflare_api_token",
   "zone_name": "example.com",
   "record_name": "home.example.com",
   "type": "A_AAAA",
@@ -442,8 +416,7 @@ Create a `config.json` file in the same directory as the binary, or generate an 
 
 ```json
 {
-  "x_auth_email": "user@example.com",
-  "x_auth_key": "123456789abcdef",
+  "api_token": "your_cloudflare_api_token",
   "zone_name": "example.com",
   "record_name": "server.example.com",
   "type": "A",
@@ -458,8 +431,7 @@ Create a `config.json` file in the same directory as the binary, or generate an 
 
 ```json
 {
-  "x_auth_email": "user@example.com",
-  "x_auth_key": "123456789abcdef",
+  "api_token": "your_cloudflare_api_token",
   "zone_name": "example.com",
   "record_name": "old.example.com",
   "mode": "delete"
@@ -495,25 +467,6 @@ golangci-lint fmt
 ```bash
 # Build for current platform
 go build -o cloudflareddns main.go
-
-# Build for multiple platforms
-GOOS=linux GOARCH=amd64 go build -o cloudflareddns-linux-amd64 main.go
-GOOS=linux GOARCH=arm64 go build -o cloudflareddns-linux-arm64 main.go
-```
-
-### Docker
-
-The project includes a multi-stage Dockerfile for building minimal images:
-
-```bash
-# Build for linux/amd64
-docker buildx build --platform linux/amd64 -t cloudflareddns:amd64 .
-
-# Build for linux/arm64
-docker buildx build --platform linux/arm64 -t cloudflareddns:arm64 .
-
-# Build for both architectures
-docker buildx build --platform linux/amd64,linux/arm64 -t cloudflareddns:latest .
 ```
 
 ### Getting Cloudflare API Credentials
@@ -538,7 +491,6 @@ docker buildx build --platform linux/amd64,linux/arm64 -t cloudflareddns:latest 
 3. For **Email**: Use your account email
 4. For **API Key**: You can use either:
    - **Global API Key** (found under "Global API Key" section)
-   - **Origin CA Key** (for creating certificates)
 
 ⚠️ **Note**: For security reasons, using API Token is recommended. Global API Keys have full access to your account and pose a higher security risk.
 
