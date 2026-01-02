@@ -109,24 +109,10 @@ func main() {
 		return
 	}
 
-	// 检查网络连接
-	if err := checkConnectivity(); err != nil {
-		fmt.Printf("❌ Network connectivity check failed: %v\n", err)
-		return
-	}
-
 	client := &HTTPClient{
 		client: &http.Client{Timeout: RequestTimeout},
 		config: config,
 	}
-
-	// 获取账户名
-	accountName, err := client.getAccountName()
-	if err != nil {
-		fmt.Printf("❌ Failed to get account name: %v\n", err)
-		return
-	}
-	fmt.Printf("👤 Account: %s\n", accountName)
 
 	// 获取 Zone ID
 	zoneID, err := client.getZoneID()
@@ -274,19 +260,6 @@ func generateExampleConfig() {
 	fmt.Println(string(data))
 }
 
-// checkConnectivity 检查网络连接
-func checkConnectivity() error {
-	client := &http.Client{Timeout: 3 * time.Second}
-	resp, err := client.Get(CloudflareAPI)
-	if err != nil {
-		return err
-	}
-	defer func() {
-		_ = resp.Body.Close()
-	}()
-	return nil
-}
-
 // getVersion 获取版本信息
 func getVersion() string {
 	return fmt.Sprintf("v%s-%s@%s (%s)", Version, CommitHash, BuildTime, runtime.Version())
@@ -343,24 +316,6 @@ func (h *HTTPClient) request(method, path string, payload interface{}) (*Cloudfl
 	}
 
 	return &cfResp, nil
-}
-
-// getAccountName 获取账户名
-func (h *HTTPClient) getAccountName() (string, error) {
-	resp, err := h.request("GET", "/client/v4/accounts?page=1&per_page=5", nil)
-	if err != nil {
-		return "", err
-	}
-
-	if results, ok := resp.Result.([]interface{}); ok && len(results) > 0 {
-		if result, ok := results[0].(map[string]interface{}); ok {
-			if name, ok := result["name"].(string); ok {
-				return name, nil
-			}
-		}
-	}
-
-	return "", fmt.Errorf("no account found")
 }
 
 // getZoneID 获取Zone ID

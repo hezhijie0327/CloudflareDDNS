@@ -204,7 +204,6 @@ go build \
 2. 前往 **我的个人资料** → **API 令牌**
 3. 点击 **创建令牌**
 4. 在创建 API Token 时，需要配置以下权限：
-   - **帐户** → **帐户设置** → **读取**
    - **区域** → **区域设置** → **编辑**
    - **区域** → **区域** → **编辑**
    - **区域** → **DNS** → **编辑**
@@ -226,7 +225,6 @@ go build \
 ```
 🚀 Cloudflare DDNS Tool v1.5.0
 
-👤 Account: My Account
 🌐 Zone ID: abc123def456
 
 🔍 Checking A record...
@@ -445,7 +443,6 @@ go build \
 2. Go to **My Profile** → **API Tokens**
 3. Click **Create Token**
 4. When creating the API Token, configure the following permissions:
-   - **Account** → **Account Settings** → **Read**
    - **Zone** → **Zone Settings** → **Edit**
    - **Zone** → **Zone** → **Edit**
    - **Zone** → **DNS** → **Edit**
@@ -467,7 +464,6 @@ go build \
 ```
 🚀 Cloudflare DDNS Tool v1.5.0
 
-👤 Account: My Account
 🌐 Zone ID: abc123def456
 
 🔍 Checking A record...
