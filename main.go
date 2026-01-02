@@ -15,11 +15,14 @@ import (
 )
 
 const (
-	Version        = "1.5.0"
-	CommitHash     = "dirty"
-	BuildTime      = "dev"
 	CloudflareAPI  = "https://api.cloudflare.com"
 	RequestTimeout = 5 * time.Second
+)
+
+var (
+	Version    = "1.5.0"
+	CommitHash = "dirty"
+	BuildTime  = "dev"
 )
 
 // Config 配置结构
