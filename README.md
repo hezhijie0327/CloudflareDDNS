@@ -22,22 +22,16 @@
 #### 使用 Docker
 
 ```bash
-# 构建镜像
-docker build -t cloudflareddns .
-
 # 运行容器（默认使用 config.json）
-docker run -v $(pwd)/config.json:/app/config.json cloudflareddns
+docker run -v $(pwd)/config.json:/config.json hezhijie0327/cloudflareddns:latest
 
 # 指定配置文件路径
-docker run -v $(pwd)/myconfig.json:/app/myconfig.json cloudflareddns -config myconfig.json
+docker run -v $(pwd)/myconfig.json:/myconfig.json hezhijie0327/cloudflareddns:latest -config myconfig.json
 ```
 
 #### 使用二进制文件
 
 ```bash
-# 编译二进制文件
-go build -o cloudflareddns main.go
-
 # 运行（默认使用 config.json）
 ./cloudflareddns
 
@@ -53,12 +47,12 @@ go build -o cloudflareddns main.go
 
 ### 命令行参数
 
-| 参数 | 说明 | 默认值 |
-|------|------|--------|
-| `-config` | 指定配置文件路径 | `config.json` |
-| `-generate-config` | 生成示例配置文件到标准输出 | - |
-| `-version` | 显示版本信息 | - |
-| `-h` / `-help` | 显示帮助信息 | - |
+| 参数               | 说明                       | 默认值        |
+| ------------------ | -------------------------- | ------------- |
+| `-config`          | 指定配置文件路径           | `config.json` |
+| `-generate-config` | 生成示例配置文件到标准输出 | -             |
+| `-version`         | 显示版本信息               | -             |
+| `-h` / `-help`     | 显示帮助信息               | -             |
 
 ### 配置说明
 
@@ -79,18 +73,18 @@ go build -o cloudflareddns main.go
 
 #### 配置选项
 
-| 字段 | 类型 | 必填 | 说明 |
-|-------|------|------|------|
-| `api_token` | string | ✅ | 您的 Cloudflare API Token（推荐） |
-| `x_auth_email` | string | ❌ | ~~您的 Cloudflare 账户邮箱~~（已弃用，请使用 api_token） |
-| `x_auth_key` | string | ❌ | ~~您的 Cloudflare API 密钥~~（已弃用，请使用 api_token） |
-| `zone_name` | string | ✅ | 您的域名（如 `example.com`） |
-| `record_name` | string | ✅ | 完整的 DNS 记录名称（如 `ddns.example.com`） |
-| `type` | string | ❌ | 记录类型：`A`、`AAAA` 或 `A_AAAA`（默认：`A`） |
-| `ttl` | int | ❌ | TTL 值：`1`（自动）或 `120`-`86400` 秒（默认：`1`） |
-| `ip` | string | ❌ | IP 地址：`auto`（自动检测）、静态 IP 或 `ipv4,ipv6`（默认：`auto`） |
-| `proxy_status` | bool | ❌ | 启用 Cloudflare 代理：`true` 或 `false`（默认：`false`） |
-| `mode` | string | ❌ | 操作模式：`upsert`（创建/更新）或 `delete`（默认：`upsert`） |
+| 字段           | 类型   | 必填 | 说明                                                                |
+| -------------- | ------ | ---- | ------------------------------------------------------------------- |
+| `api_token`    | string | ✅   | 您的 Cloudflare API Token（推荐）                                   |
+| `x_auth_email` | string | ❌   | ~~您的 Cloudflare 账户邮箱~~（已弃用，请使用 api_token）            |
+| `x_auth_key`   | string | ❌   | ~~您的 Cloudflare API 密钥~~（已弃用，请使用 api_token）            |
+| `zone_name`    | string | ✅   | 您的域名（如 `example.com`）                                        |
+| `record_name`  | string | ✅   | 完整的 DNS 记录名称（如 `ddns.example.com`）                        |
+| `type`         | string | ❌   | 记录类型：`A`、`AAAA` 或 `A_AAAA`（默认：`A`）                      |
+| `ttl`          | int    | ❌   | TTL 值：`1`（自动）或 `120`-`86400` 秒（默认：`1`）                 |
+| `ip`           | string | ❌   | IP 地址：`auto`（自动检测）、静态 IP 或 `ipv4,ipv6`（默认：`auto`） |
+| `proxy_status` | bool   | ❌   | 启用 Cloudflare 代理：`true` 或 `false`（默认：`false`）            |
+| `mode`         | string | ❌   | 操作模式：`upsert`（创建/更新）或 `delete`（默认：`upsert`）        |
 
 #### 有效的 TTL 值
 
@@ -181,18 +175,6 @@ go build -o cloudflareddns main.go
 }
 ```
 
-### 带版本信息编译
-
-将构建信息嵌入到二进制文件中：
-
-```bash
-go build \
-  -ldflags="-X main.CommitHash=$(git rev-parse --short HEAD) \
-            -X main.BuildTime=$(date -u +%Y-%m-%dT%H:%M:%S) \
-            -X main.Version=$(git describe --tags --always)" \
-  -o cloudflareddns main.go
-```
-
 ### 开发
 
 #### 代码检查
@@ -208,8 +190,10 @@ golangci-lint fmt
 #### 编译
 
 ```bash
-# 为当前平台编译
-go build -o cloudflareddns main.go
+go build \
+  -ldflags="-X main.CommitHash=$(git rev-parse --short HEAD) \
+            -X main.BuildTime=$(date -u +%Y-%m-%dT%H:%M:%S) \
+  -o cloudflareddns main.go
 ```
 
 ### 获取 Cloudflare API 凭证
@@ -279,22 +263,16 @@ A lightweight, efficient Cloudflare DDNS updater written in Go. Automatically up
 #### Using Docker
 
 ```bash
-# Build the image
-docker build -t cloudflareddns .
-
 # Run the container (default: uses config.json)
-docker run -v $(pwd)/config.json:/app/config.json cloudflareddns
+docker run -v $(pwd)/config.json:/config.json hezhijie0327/cloudflareddns:latest
 
 # Specify config file path
-docker run -v $(pwd)/myconfig.json:/app/myconfig.json cloudflareddns -config myconfig.json
+docker run -v $(pwd)/myconfig.json:/myconfig.json hezhijie0327/cloudflareddns:latest -config myconfig.json
 ```
 
 #### Using Binary
 
 ```bash
-# Build the binary
-go build -o cloudflareddns main.go
-
 # Run (default: uses config.json)
 ./cloudflareddns
 
@@ -310,12 +288,12 @@ go build -o cloudflareddns main.go
 
 ### Command Line Arguments
 
-| Argument | Description | Default |
-|----------|-------------|---------|
-| `-config` | Path to config file | `config.json` |
-| `-generate-config` | Generate example config to stdout | - |
-| `-version` | Show version information | - |
-| `-h` / `-help` | Show help message | - |
+| Argument           | Description                       | Default       |
+| ------------------ | --------------------------------- | ------------- |
+| `-config`          | Path to config file               | `config.json` |
+| `-generate-config` | Generate example config to stdout | -             |
+| `-version`         | Show version information          | -             |
+| `-h` / `-help`     | Show help message                 | -             |
 
 ### Configuration
 
@@ -336,18 +314,18 @@ Create a `config.json` file in the same directory as the binary, or generate an 
 
 #### Configuration Options
 
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `api_token` | string | ✅ | Your Cloudflare API Token (recommended) |
-| `x_auth_email` | string | ❌ | ~~Your Cloudflare account email~~ (deprecated, use api_token instead) |
-| `x_auth_key` | string | ❌ | ~~Your Cloudflare API key~~ (deprecated, use api_token instead) |
-| `zone_name` | string | ✅ | Your domain name (e.g., `example.com`) |
-| `record_name` | string | ✅ | Full DNS record name (e.g., `ddns.example.com`) |
-| `type` | string | ❌ | Record type: `A`, `AAAA`, or `A_AAAA` (default: `A`) |
-| `ttl` | int | ❌ | TTL value: `1` (auto) or `120`-`86400` in seconds (default: `1`) |
-| `ip` | string | ❌ | IP address: `auto` (detect), static IP, or `ipv4,ipv6` (default: `auto`) |
-| `proxy_status` | bool | ❌ | Enable Cloudflare proxy: `true` or `false` (default: `false`) |
-| `mode` | string | ❌ | Operation mode: `upsert` (create/update) or `delete` (default: `upsert`) |
+| Field          | Type   | Required | Description                                                              |
+| -------------- | ------ | -------- | ------------------------------------------------------------------------ |
+| `api_token`    | string | ✅       | Your Cloudflare API Token (recommended)                                  |
+| `x_auth_email` | string | ❌       | ~~Your Cloudflare account email~~ (deprecated, use api_token instead)    |
+| `x_auth_key`   | string | ❌       | ~~Your Cloudflare API key~~ (deprecated, use api_token instead)          |
+| `zone_name`    | string | ✅       | Your domain name (e.g., `example.com`)                                   |
+| `record_name`  | string | ✅       | Full DNS record name (e.g., `ddns.example.com`)                          |
+| `type`         | string | ❌       | Record type: `A`, `AAAA`, or `A_AAAA` (default: `A`)                     |
+| `ttl`          | int    | ❌       | TTL value: `1` (auto) or `120`-`86400` in seconds (default: `1`)         |
+| `ip`           | string | ❌       | IP address: `auto` (detect), static IP, or `ipv4,ipv6` (default: `auto`) |
+| `proxy_status` | bool   | ❌       | Enable Cloudflare proxy: `true` or `false` (default: `false`)            |
+| `mode`         | string | ❌       | Operation mode: `upsert` (create/update) or `delete` (default: `upsert`) |
 
 #### Valid TTL Values
 
@@ -438,18 +416,6 @@ Create a `config.json` file in the same directory as the binary, or generate an 
 }
 ```
 
-### Building with Version Info
-
-To embed build information into the binary:
-
-```bash
-go build \
-  -ldflags="-X main.CommitHash=$(git rev-parse --short HEAD) \
-            -X main.BuildTime=$(date -u +%Y-%m-%dT%H:%M:%S) \
-            -X main.Version=$(git describe --tags --always)" \
-  -o cloudflareddns main.go
-```
-
 ### Development
 
 #### Linting
@@ -465,8 +431,10 @@ golangci-lint fmt
 #### Build
 
 ```bash
-# Build for current platform
-go build -o cloudflareddns main.go
+go build \
+  -ldflags="-X main.CommitHash=$(git rev-parse --short HEAD) \
+            -X main.BuildTime=$(date -u +%Y-%m-%dT%H:%M:%S) \
+  -o cloudflareddns main.go
 ```
 
 ### Getting Cloudflare API Credentials

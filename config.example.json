@@ -1,11 +1,10 @@
 {
-  "x_auth_email": "your_cloudflare_email@example.com",
-  "x_auth_key": "your_cloudflare_global_api_key",
+  "api_token": "your-cloudflare-api-token",
   "zone_name": "example.com",
   "record_name": "ddns.example.com",
-  "type": "A",
+  "type": "A_AAAA",
   "ttl": 1,
   "ip": "auto",
-  "proxy_status": false,
-  "mode": "upsert"
+  "mode": "upsert",
+  "update_interval": 300
 }
