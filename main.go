@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"flag"
 	"fmt"
 	"io"
 	"net"
@@ -17,7 +18,6 @@ const (
 	CommitHash     = "dirty"
 	BuildTime      = "dev"
 	CloudflareAPI  = "https://api.cloudflare.com"
-	ConfigFilePath = "config.json"
 	RequestTimeout = 5 * time.Second
 )
 
@@ -27,11 +27,11 @@ type Config struct {
 	XAuthKey    string `json:"x_auth_key"`
 	ZoneName    string `json:"zone_name"`
 	RecordName  string `json:"record_name"`
-	Type        string `json:"type"`         // A, AAAA, or A_AAAA (default: A)
-	TTL         int    `json:"ttl"`          // 1, 120, 300, 600, 900, 1800, 3600, 7200, 18000, 43200, 86400 (default: 1)
-	IP          string `json:"ip"`           // "auto" or specific IP or "ipv4,ipv6" (default: auto)
-	ProxyStatus bool   `json:"proxy_status"` // true or false (default: false)
-	Mode        string `json:"mode"`         // upsert (default), delete
+	Type        string `json:"type,omitempty"`         // A, AAAA, or A_AAAA (default: A)
+	TTL         int    `json:"ttl,omitempty"`          // 1, 120, 300, 600, 900, 1800, 3600, 7200, 18000, 43200, 86400 (default: 1)
+	IP          string `json:"ip,omitempty"`           // "auto" or specific IP or "ipv4,ipv6" (default: auto)
+	ProxyStatus bool   `json:"proxy_status,omitempty"` // true or false (default: false)
+	Mode        string `json:"mode,omitempty"`         // upsert (default), delete
 }
 
 // CloudflareResponse API响应结构
@@ -48,10 +48,38 @@ type HTTPClient struct {
 }
 
 func main() {
+	// 自定义帮助信息
+	flag.Usage = func() {
+		fmt.Fprintf(os.Stderr, "Cloudflare DDNS Tool - Dynamic DNS Update Client\n\n")
+		fmt.Fprintf(os.Stderr, "Version: %s\n\n", getVersion())
+		fmt.Fprintf(os.Stderr, "Usage:\n")
+		fmt.Fprintf(os.Stderr, "  %s -config <config file>     # Start with config file\n", os.Args[0])
+		fmt.Fprintf(os.Stderr, "  %s -generate-config          # Generate example config\n", os.Args[0])
+		fmt.Fprintf(os.Stderr, "  %s -version                  # Show version information\n", os.Args[0])
+		fmt.Fprintf(os.Stderr, "  %s                            # Start with default config\n\n", os.Args[0])
+	}
+
+	// 解析命令行参数
+	configPath := flag.String("config", "config.json", "Path to config file")
+	generateConfig := flag.Bool("generate-config", false, "Generate example config file")
+	showVersion := flag.Bool("version", false, "Show version information")
+	flag.Parse()
+
+	// 处理特殊参数
+	if *showVersion {
+		fmt.Printf("Cloudflare DDNS Tool v%s\n", getVersion())
+		return
+	}
+
+	if *generateConfig {
+		generateExampleConfig()
+		return
+	}
+
 	fmt.Printf("🚀 Cloudflare DDNS Tool v%s\n\n", getVersion())
 
 	// 加载配置
-	config, err := loadConfig(ConfigFilePath)
+	config, err := loadConfig(*configPath)
 	if err != nil {
 		fmt.Printf("❌ Failed to load config: %v\n", err)
 		return
@@ -61,7 +89,7 @@ func main() {
 	config.setDefaults()
 
 	// 验证配置
-	if err := config.Validate(); err != nil {
+	if err := config.configValidate(); err != nil {
 		fmt.Printf("❌ Invalid config: %v\n", err)
 		return
 	}
@@ -136,8 +164,8 @@ func (c *Config) setDefaults() {
 	}
 }
 
-// Validate 验证配置有效性
-func (c *Config) Validate() error {
+// configValidate 验证配置有效性
+func (c *Config) configValidate() error {
 	validTTLs := map[int]bool{1: true, 120: true, 300: true, 600: true, 900: true, 1800: true, 3600: true, 7200: true, 18000: true, 43200: true, 86400: true}
 	validModes := map[string]bool{"upsert": true, "delete": true}
 	validTypes := map[string]bool{"A": true, "AAAA": true, "A_AAAA": true}
@@ -160,6 +188,29 @@ func (c *Config) Validate() error {
 	}
 
 	return nil
+}
+
+// generateExampleConfig 打印示例配置文件
+func generateExampleConfig() {
+	config := &Config{
+		XAuthEmail:  "your-cloudflare-email@example.com",
+		XAuthKey:    "your-cloudflare-api-key",
+		ZoneName:    "example.com",
+		RecordName:  "ddns.example.com",
+		Type:        "A_AAAA",
+		TTL:         1,
+		IP:          "auto",
+		ProxyStatus: false,
+		Mode:        "upsert",
+	}
+
+	data, err := json.MarshalIndent(config, "", "  ")
+	if err != nil {
+		fmt.Printf("❌ Failed to generate example config: %v\n", err)
+		return
+	}
+
+	fmt.Println(string(data))
 }
 
 // checkConnectivity 检查网络连接

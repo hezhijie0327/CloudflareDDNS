@@ -25,8 +25,11 @@
 # 构建镜像
 docker build -t cloudflareddns .
 
-# 运行容器
+# 运行容器（默认使用 config.json）
 docker run -v $(pwd)/config.json:/app/config.json cloudflareddns
+
+# 指定配置文件路径
+docker run -v $(pwd)/myconfig.json:/app/myconfig.json cloudflareddns -config myconfig.json
 ```
 
 #### 使用二进制文件
@@ -35,13 +38,31 @@ docker run -v $(pwd)/config.json:/app/config.json cloudflareddns
 # 编译二进制文件
 go build -o cloudflareddns main.go
 
-# 运行
+# 运行（默认使用 config.json）
 ./cloudflareddns
+
+# 指定配置文件路径
+./cloudflareddns -config /path/to/config.json
+
+# 生成示例配置文件
+./cloudflareddns -generate-config > config.json
+
+# 查看版本信息
+./cloudflareddns -version
 ```
+
+### 命令行参数
+
+| 参数 | 说明 | 默认值 |
+|------|------|--------|
+| `-config` | 指定配置文件路径 | `config.json` |
+| `-generate-config` | 生成示例配置文件到标准输出 | - |
+| `-version` | 显示版本信息 | - |
+| `-h` / `-help` | 显示帮助信息 | - |
 
 ### 配置说明
 
-在二进制文件所在目录创建 `config.json` 文件：
+在二进制文件所在目录创建 `config.json` 文件，或使用 `-generate-config` 生成示例：
 
 ```json
 {
@@ -270,8 +291,11 @@ A lightweight, efficient Cloudflare DDNS updater written in Go. Automatically up
 # Build the image
 docker build -t cloudflareddns .
 
-# Run the container
+# Run the container (default: uses config.json)
 docker run -v $(pwd)/config.json:/app/config.json cloudflareddns
+
+# Specify config file path
+docker run -v $(pwd)/myconfig.json:/app/myconfig.json cloudflareddns -config myconfig.json
 ```
 
 #### Using Binary
@@ -280,13 +304,31 @@ docker run -v $(pwd)/config.json:/app/config.json cloudflareddns
 # Build the binary
 go build -o cloudflareddns main.go
 
-# Run
+# Run (default: uses config.json)
 ./cloudflareddns
+
+# Specify config file path
+./cloudflareddns -config /path/to/config.json
+
+# Generate example config file
+./cloudflareddns -generate-config > config.json
+
+# Show version information
+./cloudflareddns -version
 ```
+
+### Command Line Arguments
+
+| Argument | Description | Default |
+|----------|-------------|---------|
+| `-config` | Path to config file | `config.json` |
+| `-generate-config` | Generate example config to stdout | - |
+| `-version` | Show version information | - |
+| `-h` / `-help` | Show help message | - |
 
 ### Configuration
 
-Create a `config.json` file in the same directory as the binary:
+Create a `config.json` file in the same directory as the binary, or generate an example using `-generate-config`:
 
 ```json
 {
