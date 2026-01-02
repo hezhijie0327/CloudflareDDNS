@@ -129,8 +129,8 @@ func main() {
 	// 获取更新间隔
 	updateInterval := config.getUpdateInterval()
 
-	// 如果 update_interval 为 0，只运行一次
-	if updateInterval <= 0 {
+	// 执行更新的函数
+	runUpdate := func() {
 		switch config.Mode {
 		case "upsert":
 			client.handleUpsert(zoneID)
@@ -139,6 +139,11 @@ func main() {
 		default:
 			fmt.Printf("❌ Invalid mode: %s\n", config.Mode)
 		}
+	}
+
+	// 如果 update_interval 为 0，只运行一次
+	if updateInterval <= 0 {
+		runUpdate()
 		return
 	}
 
@@ -150,25 +155,12 @@ func main() {
 	fmt.Printf("⏰ Running every %d seconds. Press Ctrl+C to stop.\n\n", updateInterval)
 
 	// 立即执行一次
-	switch config.Mode {
-	case "upsert":
-		client.handleUpsert(zoneID)
-	case "delete":
-		client.handleDelete(zoneID)
-	default:
-		fmt.Printf("❌ Invalid mode: %s\n", config.Mode)
-		return
-	}
+	runUpdate()
 
 	// 循环执行
 	for range ticker.C {
 		fmt.Printf("\n🔄 %s - Starting scheduled update...\n", time.Now().Format("2006-01-02 15:04:05"))
-		switch config.Mode {
-		case "upsert":
-			client.handleUpsert(zoneID)
-		case "delete":
-			client.handleDelete(zoneID)
-		}
+		runUpdate()
 	}
 }
 
