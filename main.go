@@ -24,15 +24,16 @@ const (
 
 // Config 配置结构
 type Config struct {
-	XAuthEmail  string `json:"x_auth_email"`
-	XAuthKey    string `json:"x_auth_key"`
-	ZoneName    string `json:"zone_name"`
-	RecordName  string `json:"record_name"`
-	Type        string `json:"type,omitempty"`         // A, AAAA, or A_AAAA (default: A)
-	TTL         int    `json:"ttl,omitempty"`          // 1, 120, 300, 600, 900, 1800, 3600, 7200, 18000, 43200, 86400 (default: 1)
-	IP          string `json:"ip,omitempty"`           // "auto" or specific IP or "ipv4,ipv6" (default: auto)
-	ProxyStatus bool   `json:"proxy_status,omitempty"` // true or false (default: false)
-	Mode        string `json:"mode,omitempty"`         // upsert (default), delete
+	XAuthEmail     string `json:"x_auth_email"`
+	XAuthKey       string `json:"x_auth_key"`
+	ZoneName       string `json:"zone_name"`
+	RecordName     string `json:"record_name"`
+	Type           string `json:"type,omitempty"`            // A, AAAA, or A_AAAA (default: A)
+	TTL            int    `json:"ttl,omitempty"`             // 1, 120, 300, 600, 900, 1800, 3600, 7200, 18000, 43200, 86400 (default: 1)
+	IP             string `json:"ip,omitempty"`              // "auto" or specific IP or "ipv4,ipv6" (default: auto)
+	ProxyStatus    bool   `json:"proxy_status,omitempty"`    // true or false (default: false)
+	Mode           string `json:"mode,omitempty"`            // upsert (default), delete
+	UpdateInterval *int   `json:"update_interval,omitempty"` // Update interval in seconds (nil/default: 300, 0: run once)
 }
 
 // CloudflareResponse API响应结构
@@ -124,6 +125,31 @@ func main() {
 
 	// 执行操作
 	fmt.Println()
+
+	// 获取更新间隔
+	updateInterval := config.getUpdateInterval()
+
+	// 如果 update_interval 为 0，只运行一次
+	if updateInterval <= 0 {
+		switch config.Mode {
+		case "upsert":
+			client.handleUpsert(zoneID)
+		case "delete":
+			client.handleDelete(zoneID)
+		default:
+			fmt.Printf("❌ Invalid mode: %s\n", config.Mode)
+		}
+		return
+	}
+
+	// 定期执行更新
+	interval := time.Duration(updateInterval) * time.Second
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
+
+	fmt.Printf("⏰ Running every %d seconds. Press Ctrl+C to stop.\n\n", updateInterval)
+
+	// 立即执行一次
 	switch config.Mode {
 	case "upsert":
 		client.handleUpsert(zoneID)
@@ -131,6 +157,18 @@ func main() {
 		client.handleDelete(zoneID)
 	default:
 		fmt.Printf("❌ Invalid mode: %s\n", config.Mode)
+		return
+	}
+
+	// 循环执行
+	for range ticker.C {
+		fmt.Printf("\n🔄 %s - Starting scheduled update...\n", time.Now().Format("2006-01-02 15:04:05"))
+		switch config.Mode {
+		case "upsert":
+			client.handleUpsert(zoneID)
+		case "delete":
+			client.handleDelete(zoneID)
+		}
 	}
 }
 
@@ -163,6 +201,19 @@ func (c *Config) setDefaults() {
 	if c.IP == "" {
 		c.IP = "auto"
 	}
+	// UpdateInterval 为 nil 时设置为默认值 300
+	if c.UpdateInterval == nil {
+		defaultInterval := 300
+		c.UpdateInterval = &defaultInterval
+	}
+}
+
+// getUpdateInterval 获取更新间隔（秒）
+func (c *Config) getUpdateInterval() int {
+	if c.UpdateInterval == nil {
+		return 300
+	}
+	return *c.UpdateInterval
 }
 
 // configValidate 验证配置有效性
@@ -193,16 +244,18 @@ func (c *Config) configValidate() error {
 
 // generateExampleConfig 打印示例配置文件
 func generateExampleConfig() {
+	updateInterval := 300
 	config := &Config{
-		XAuthEmail:  "your-cloudflare-email@example.com",
-		XAuthKey:    "your-cloudflare-api-key",
-		ZoneName:    "example.com",
-		RecordName:  "ddns.example.com",
-		Type:        "A_AAAA",
-		TTL:         1,
-		IP:          "auto",
-		ProxyStatus: false,
-		Mode:        "upsert",
+		XAuthEmail:     "your-cloudflare-email@example.com",
+		XAuthKey:       "your-cloudflare-api-key",
+		ZoneName:       "example.com",
+		RecordName:     "ddns.example.com",
+		Type:           "A_AAAA",
+		TTL:            1,
+		IP:             "auto",
+		ProxyStatus:    false,
+		Mode:           "upsert",
+		UpdateInterval: &updateInterval,
 	}
 
 	data, err := json.MarshalIndent(config, "", "  ")
