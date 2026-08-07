@@ -5,7 +5,7 @@
 ### 特性
 
 - 🚀 **多种 DNS 记录类型**：支持 A（IPv4）、AAAA（IPv6）以及同时更新两种记录
-- 🔄 **自动 IP 检测**：通过 Cloudflare trace API 自动检测 WAN IP
+- 🔄 **自动 IP 检测**：优先通过 DNS（`whoami.cloudflare`）检测 WAN IP，失败时回退到 Cloudflare trace API
 - 🎯 **双操作模式**：创建/更新 DNS 记录或删除记录
 - 🐳 **Docker 支持**：多架构 Docker 镜像（linux/amd64、linux/arm64）
 - ⚡ **快速轻量**：由 Go 编译的单个二进制文件，依赖最少
@@ -107,7 +107,7 @@ docker run -v $(pwd)/myconfig.json:/myconfig.json hezhijie0327/cloudflareddns:la
 
 #### IP 配置
 
-- **auto** - 通过 Cloudflare trace API 自动检测您的 WAN IP（推荐）
+- **auto** - 自动检测您的 WAN IP（推荐）。优先通过 DNS 查询 `whoami.cloudflare` 的 TXT 记录（A 记录经 IPv4 DNS 服务器 `1.1.1.1`，AAAA 记录经 IPv6 DNS 服务器 `2606:4700:4700::1111`），DNS 检测失败时回退到 Cloudflare trace API
 - **static** - 使用指定的 IP 地址（如 `"192.168.1.1"`）
 - **dual** - 同时指定 IPv4 和 IPv6（如 `"192.168.1.1,2001:db8::1"`）
 
@@ -217,7 +217,7 @@ go build \
 ### 输出示例
 
 ```
-🚀 Cloudflare DDNS Tool v1.5.0
+🚀 Cloudflare DDNS Tool v1.6.0
 
 🌐 Zone ID: abc123def456
 

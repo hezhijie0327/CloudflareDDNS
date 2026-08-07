@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/binary"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -17,10 +18,15 @@ import (
 const (
 	CloudflareAPI  = "https://api.cloudflare.com"
 	RequestTimeout = 5 * time.Second
+
+	// DNS检测配置：通过 whoami.cloudflare 的 TXT 记录获取WAN IP
+	DNS4Server   = "1.1.1.1"              // IPv4 DNS服务器，返回IPv4出口地址
+	DNS6Server   = "2606:4700:4700::1111" // IPv6 DNS服务器，返回IPv6出口地址
+	WhoamiDomain = "whoami.cloudflare"
 )
 
 var (
-	Version    = "1.5.0"
+	Version    = "1.6.0"
 	CommitHash = "dirty"
 	BuildTime  = "dev"
 )
@@ -377,8 +383,35 @@ func (h *HTTPClient) getWANIP(recordType string) (string, error) {
 		return h.parseStaticIP(recordType)
 	}
 
-	// 从Cloudflare trace获取
+	// 优先通过DNS检测，失败时回退到Cloudflare trace
+	if ip, err := h.getIPFromDNS(recordType); err == nil {
+		return ip, nil
+	} else {
+		fmt.Printf("⚠️  DNS detection failed (%v), falling back to HTTP...\n", err)
+	}
+
 	return h.getIPFromCloudflareTrace(recordType)
+}
+
+// getIPFromDNS 通过DNS查询获取WAN IP
+// A记录查询IPv4 DNS服务器，AAAA记录查询IPv6 DNS服务器，
+// 因为DNS服务器返回的是发起查询的网络出口地址
+func (h *HTTPClient) getIPFromDNS(recordType string) (string, error) {
+	dnsServer := DNS4Server
+	if recordType == "AAAA" {
+		dnsServer = DNS6Server
+	}
+
+	txt, err := dnsQueryTXT(dnsServer, WhoamiDomain)
+	if err != nil {
+		return "", err
+	}
+
+	if !isValidIP(txt, recordType) {
+		return "", fmt.Errorf("invalid IP from DNS: %s", txt)
+	}
+
+	return txt, nil
 }
 
 // parseStaticIP 解析静态IP
@@ -449,6 +482,175 @@ func (h *HTTPClient) getIPFromCloudflareTrace(recordType string) (string, error)
 	}
 
 	return "", fmt.Errorf("no valid IP found")
+}
+
+// dnsQueryTXT 发送DNS TXT查询并返回记录内容
+func dnsQueryTXT(server, name string) (string, error) {
+	id := uint16(time.Now().UnixNano())
+	query := buildDNSQuery(id, name)
+
+	// 优先UDP查询，响应截断（TC标志）时回退到TCP
+	return dnsQueryUDP(server, query, id)
+}
+
+// buildDNSQuery 构建DNS查询包（TXT类型，CH类）
+func buildDNSQuery(id uint16, name string) []byte {
+	// Header: ID(2) + Flags(2) + QDCOUNT(2) + ANCOUNT(2) + NSCOUNT(2) + ARCOUNT(2)
+	query := make([]byte, 12)
+	binary.BigEndian.PutUint16(query[0:2], id)
+	query[2], query[3] = 0x01, 0x00 // 设置RD（期望递归）标志
+	binary.BigEndian.PutUint16(query[4:6], 1)
+
+	// 编码域名
+	for _, label := range strings.Split(name, ".") {
+		query = append(query, byte(len(label)))
+		query = append(query, label...)
+	}
+	query = append(query, 0)
+
+	// 查询类型TXT(16)和类CH(3)
+	query = append(query, 0x00, 0x10, 0x00, 0x03)
+
+	return query
+}
+
+// dnsQueryUDP 通过UDP发送DNS查询
+func dnsQueryUDP(server string, query []byte, id uint16) (string, error) {
+	conn, err := net.DialTimeout("udp", net.JoinHostPort(server, "53"), RequestTimeout)
+	if err != nil {
+		return "", err
+	}
+	defer conn.Close()
+	_ = conn.SetDeadline(time.Now().Add(RequestTimeout))
+
+	if _, err := conn.Write(query); err != nil {
+		return "", err
+	}
+
+	buf := make([]byte, 4096)
+	n, err := conn.Read(buf)
+	if err != nil {
+		return "", err
+	}
+
+	// 响应被截断（TC标志）时使用TCP重试
+	if n >= 4 && binary.BigEndian.Uint16(buf[2:4])&0x0200 != 0 {
+		return dnsQueryTCP(server, query, id)
+	}
+
+	return parseDNSResponse(buf[:n], id)
+}
+
+// dnsQueryTCP 通过TCP发送DNS查询（用于UDP响应截断的情况）
+func dnsQueryTCP(server string, query []byte, id uint16) (string, error) {
+	conn, err := net.DialTimeout("tcp", net.JoinHostPort(server, "53"), RequestTimeout)
+	if err != nil {
+		return "", err
+	}
+	defer conn.Close()
+	_ = conn.SetDeadline(time.Now().Add(RequestTimeout))
+
+	// TCP查询需要在消息前附加2字节长度前缀
+	length := make([]byte, 2)
+	binary.BigEndian.PutUint16(length, uint16(len(query)))
+	if _, err := conn.Write(append(length, query...)); err != nil {
+		return "", err
+	}
+
+	// 先读取2字节响应长度前缀
+	header := make([]byte, 2)
+	if _, err := io.ReadFull(conn, header); err != nil {
+		return "", err
+	}
+
+	buf := make([]byte, binary.BigEndian.Uint16(header))
+	if _, err := io.ReadFull(conn, buf); err != nil {
+		return "", err
+	}
+
+	return parseDNSResponse(buf, id)
+}
+
+// parseDNSResponse 解析DNS响应，返回TXT记录内容
+func parseDNSResponse(resp []byte, id uint16) (string, error) {
+	if len(resp) < 12 {
+		return "", fmt.Errorf("DNS response too short")
+	}
+
+	if binary.BigEndian.Uint16(resp[0:2]) != id {
+		return "", fmt.Errorf("DNS response ID mismatch")
+	}
+
+	flags := binary.BigEndian.Uint16(resp[2:4])
+	if flags&0x8000 == 0 {
+		return "", fmt.Errorf("not a DNS response")
+	}
+	if flags&0x000F != 0 {
+		return "", fmt.Errorf("DNS response error: rcode=%d", flags&0x000F)
+	}
+
+	// 跳过问题段
+	offset := skipDNSName(resp, 12)
+	if offset < 0 || offset+4 > len(resp) {
+		return "", fmt.Errorf("invalid DNS question section")
+	}
+	offset += 4 // 跳过Type和Class
+
+	// 解析答案段
+	anCount := int(binary.BigEndian.Uint16(resp[6:8]))
+	var txts []string
+	for i := 0; i < anCount; i++ {
+		offset = skipDNSName(resp, offset)
+		if offset < 0 || offset+10 > len(resp) {
+			return "", fmt.Errorf("invalid DNS answer header")
+		}
+
+		recordType := binary.BigEndian.Uint16(resp[offset : offset+2])
+		rdLength := int(binary.BigEndian.Uint16(resp[offset+8 : offset+10]))
+		offset += 10
+		if offset+rdLength > len(resp) {
+			return "", fmt.Errorf("invalid DNS answer data")
+		}
+
+		if recordType == 16 { // TXT
+			for i := 0; i < rdLength; {
+				length := int(resp[offset+i])
+				i++
+				if i+length > rdLength {
+					return "", fmt.Errorf("invalid TXT record data")
+				}
+				txts = append(txts, string(resp[offset+i:offset+i+length]))
+				i += length
+			}
+		}
+
+		offset += rdLength
+	}
+
+	if len(txts) == 0 {
+		return "", fmt.Errorf("no TXT record found")
+	}
+
+	return strings.Join(txts, ""), nil
+}
+
+// skipDNSName 跳过DNS名称，支持压缩指针
+func skipDNSName(msg []byte, offset int) int {
+	for offset < len(msg) {
+		length := int(msg[offset])
+		if length == 0 {
+			return offset + 1
+		}
+		if length&0xC0 == 0xC0 {
+			// 压缩指针，固定占用2字节
+			return offset + 2
+		}
+		if length > 63 {
+			return -1
+		}
+		offset += 1 + length
+	}
+	return -1
 }
 
 // isValidIP 验证IP地址格式
