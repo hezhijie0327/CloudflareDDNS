@@ -13,11 +13,8 @@ var (
 
 // Validate 验证配置有效性
 func (c *Config) Validate() error {
-	if c.APIToken == "" && (c.XAuthEmail == "" || c.XAuthKey == "") {
-		return errors.New("missing required authentication (api_token or x_auth_email + x_auth_key)")
-	}
-	if c.ZoneName == "" || c.RecordName == "" {
-		return errors.New("missing required fields (zone_name, record_name)")
+	if c.Cloudflare == nil {
+		return errors.New(`no provider configured (add a "cloudflare": {...} section)`)
 	}
 
 	if !validModes[c.Mode] {
@@ -30,6 +27,12 @@ func (c *Config) Validate() error {
 		}
 		if !validTTLs[c.TTL] {
 			return fmt.Errorf("invalid TTL: %d", c.TTL)
+		}
+	}
+
+	if c.Cloudflare != nil {
+		if err := c.Cloudflare.validate(); err != nil {
+			return fmt.Errorf("cloudflare: %w", err)
 		}
 	}
 

@@ -4,7 +4,7 @@ import "errors"
 
 // ZoneID 获取Zone ID
 func (c *Client) ZoneID() (string, error) {
-	resp, err := c.request("GET", "/client/v4/zones?name="+c.cfg.ZoneName, nil)
+	resp, err := c.request("GET", "/client/v4/zones?name="+c.cfg.Cloudflare.ZoneName, nil)
 	if err != nil {
 		return "", err
 	}

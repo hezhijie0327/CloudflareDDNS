@@ -16,7 +16,7 @@ type Record struct {
 
 // RecordID 获取DNS记录ID，记录不存在时返回空字符串
 func (c *Client) RecordID(zoneID, recordType string) (string, error) {
-	resp, err := c.request("GET", fmt.Sprintf("/client/v4/zones/%s/dns_records?name=%s&type=%s", zoneID, c.cfg.RecordName, recordType), nil)
+	resp, err := c.request("GET", fmt.Sprintf("/client/v4/zones/%s/dns_records?name=%s&type=%s", zoneID, c.cfg.Cloudflare.RecordName, recordType), nil)
 	if err != nil {
 		return "", err
 	}

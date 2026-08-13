@@ -11,8 +11,8 @@ import (
 // CommitHash is the git commit hash from which the binary was built.
 // BuildTime is the UTC timestamp of when the binary was built.
 var (
-	ProjectName = "CloudflareDDNS"
-	Version     = "1.6.1"
+	ProjectName = "ZJDDNS"
+	Version     = "2.0.0"
 	CommitHash  = "" // set via ldflags: -X main.CommitHash=$(git rev-parse --short HEAD)
 	BuildTime   = "" // set via ldflags: -X main.BuildTime=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 )

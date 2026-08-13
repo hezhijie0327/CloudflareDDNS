@@ -1,4 +1,4 @@
-name: Build & Release hezhijie0327/CloudflareDDNS
+name: Build & Release hezhijie0327/ZJDDNS
 
 on:
   push:
@@ -24,7 +24,7 @@ jobs:
       fail-fast: false
       matrix:
         package:
-          - cloudflareddns
+          - zjddns
         platform: [linux/amd64, linux/arm64]
         include:
           - platform: linux/amd64
@@ -87,7 +87,7 @@ jobs:
       fail-fast: false
       matrix:
         package:
-          - cloudflareddns
+          - zjddns
     name: Merge ${{ matrix.package }}
     runs-on: ubuntu-latest
     steps:

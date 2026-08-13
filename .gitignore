@@ -1,5 +1,5 @@
 # Binary
-/cloudflareddns
+/zjddns
 *.exe
 
 # Local config (contains API tokens)

@@ -1,4 +1,4 @@
-# bump-version.ps1 — bump CloudflareDDNS version.
+# bump-version.ps1 — bump ZJDDNS version.
 # Usage:
 #   pwsh scripts/bump-version.ps1 patch
 #   pwsh scripts/bump-version.ps1 minor
@@ -18,7 +18,7 @@ param(
 $ErrorActionPreference = "Stop"
 
 # ── Parse current version from version.go ────────────────────────────────
-$VersionFile = "cmd/cloudflareddns/version.go"
+$VersionFile = "cmd/zjddns/version.go"
 $Current = (Select-String -Path $VersionFile -Pattern 'Version\s*=' | Select-Object -First 1).Line -replace '.*"(.*)".*', '$1'
 Write-Host "Current version: $Current"
 

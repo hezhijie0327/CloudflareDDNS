@@ -1,19 +1,19 @@
 package main
 
 import (
-	"cloudflareddns/cloudflare"
-	"cloudflareddns/config"
-	"cloudflareddns/ddns"
 	"flag"
 	"fmt"
 	"os"
 	"time"
+	"zjddns/config"
+	"zjddns/ddns"
+	"zjddns/providers"
 )
 
 func main() {
 	// 自定义帮助信息
 	flag.Usage = func() {
-		fmt.Fprintf(os.Stderr, "Cloudflare DDNS Tool - Dynamic DNS Update Client\n\n")
+		fmt.Fprintf(os.Stderr, "ZJDDNS - Dynamic DNS Update Client\n\n")
 		fmt.Fprintf(os.Stderr, "Version: %s\n\n", getVersion())
 		fmt.Fprintf(os.Stderr, "Usage:\n")
 		fmt.Fprintf(os.Stderr, "  %s -config <config file>     # Start with config file\n", os.Args[0])
@@ -30,7 +30,7 @@ func main() {
 
 	// 处理特殊参数
 	if *showVersion {
-		fmt.Printf("Cloudflare DDNS Tool %s\n", getVersion())
+		fmt.Printf("%s %s\n", ProjectName, getVersion())
 		return
 	}
 
@@ -39,7 +39,10 @@ func main() {
 		return
 	}
 
-	fmt.Printf("🚀 Cloudflare DDNS Tool %s\n\n", getVersion())
+	versionStr := getVersion()
+	if _, err := fmt.Print(banner(versionStr)); err != nil {
+		fmt.Fprintf(os.Stderr, "warning: writing banner: %v\n", err)
+	}
 
 	// 加载配置
 	cfg, err := config.Load(*configPath)
@@ -51,29 +54,19 @@ func main() {
 	// 设置默认值
 	cfg.SetDefaults()
 
-	// 检查是否使用了已弃用的认证方式
-	if cfg.XAuthEmail != "" && cfg.XAuthKey != "" && cfg.APIToken == "" {
-		fmt.Printf("⚠️  WARNING: Using deprecated authentication method (x_auth_email + x_auth_key)\n")
-		fmt.Printf("⚠️  Please migrate to using 'api_token' instead\n")
-		fmt.Printf("⚠️  You can create an API token at: https://dash.cloudflare.com/profile/api-tokens\n\n")
-	}
-
 	// 验证配置
 	if err := cfg.Validate(); err != nil {
 		fmt.Printf("❌ Invalid config: %v\n", err)
 		return
 	}
 
-	client := cloudflare.New(cfg)
-	runner := ddns.New(client, cfg)
-
-	// 获取 Zone ID
-	zoneID, err := client.ZoneID()
+	// 构造所有已配置的 Provider（可同时使用多个提供商）
+	ps, err := providers.All(cfg)
 	if err != nil {
-		fmt.Printf("❌ Failed to get zone ID: %v\n", err)
+		fmt.Printf("❌ Failed to initialize provider: %v\n", err)
 		return
 	}
-	fmt.Printf("🌐 Zone ID: %s\n", zoneID)
+	runner := ddns.New(ps, cfg)
 
 	// 执行操作
 	fmt.Println()
@@ -85,9 +78,9 @@ func main() {
 	runUpdate := func() {
 		switch cfg.Mode {
 		case "upsert":
-			runner.Upsert(zoneID)
+			runner.Upsert()
 		case "delete":
-			runner.Delete(zoneID)
+			runner.Delete()
 		default:
 			fmt.Printf("❌ Invalid mode: %s\n", cfg.Mode)
 		}

@@ -51,15 +51,17 @@ func TestInterval(t *testing.T) {
 }
 
 func TestValidate(t *testing.T) {
-	// validCfg is a fully valid upsert configuration.
+	// validCfg is a fully valid upsert configuration with one provider.
 	validCfg := func() Config {
 		return Config{
-			APIToken:   "token",
-			ZoneName:   "example.com",
-			RecordName: "ddns.example.com",
-			Mode:       "upsert",
-			Type:       "A",
-			TTL:        1,
+			Mode: "upsert",
+			Type: "A",
+			TTL:  1,
+			Cloudflare: &CloudflareConfig{
+				APIToken:   "token",
+				ZoneName:   "example.com",
+				RecordName: "ddns.example.com",
+			},
 		}
 	}
 
@@ -71,41 +73,46 @@ func TestValidate(t *testing.T) {
 		{name: "valid api token", cfg: validCfg()},
 		{
 			name: "valid legacy auth",
-			cfg:  Config{XAuthEmail: "a@b.c", XAuthKey: "key", ZoneName: "example.com", RecordName: "ddns.example.com", Mode: "upsert", Type: "A", TTL: 1},
+			cfg:  Config{Mode: "upsert", Type: "A", TTL: 1, Cloudflare: &CloudflareConfig{XAuthEmail: "a@b.c", XAuthKey: "key", ZoneName: "example.com", RecordName: "ddns.example.com"}},
+		},
+		{
+			name:    "no provider configured",
+			cfg:     Config{Mode: "upsert", Type: "A", TTL: 1},
+			wantErr: "no provider",
 		},
 		{
 			name:    "missing authentication",
-			cfg:     Config{ZoneName: "example.com", RecordName: "ddns.example.com", Mode: "upsert", Type: "A", TTL: 1},
+			cfg:     Config{Mode: "upsert", Type: "A", TTL: 1, Cloudflare: &CloudflareConfig{ZoneName: "example.com", RecordName: "ddns.example.com"}},
 			wantErr: "authentication",
 		},
 		{
 			name:    "missing zone name",
-			cfg:     Config{APIToken: "token", RecordName: "ddns.example.com", Mode: "upsert", Type: "A", TTL: 1},
+			cfg:     Config{Mode: "upsert", Type: "A", TTL: 1, Cloudflare: &CloudflareConfig{APIToken: "token", RecordName: "ddns.example.com"}},
 			wantErr: "zone_name",
 		},
 		{
 			name:    "missing record name",
-			cfg:     Config{APIToken: "token", ZoneName: "example.com", Mode: "upsert", Type: "A", TTL: 1},
+			cfg:     Config{Mode: "upsert", Type: "A", TTL: 1, Cloudflare: &CloudflareConfig{APIToken: "token", ZoneName: "example.com"}},
 			wantErr: "record_name",
 		},
 		{
 			name:    "invalid mode",
-			cfg:     Config{APIToken: "token", ZoneName: "example.com", RecordName: "ddns.example.com", Mode: "bogus", Type: "A", TTL: 1},
+			cfg:     Config{Mode: "bogus", Type: "A", TTL: 1, Cloudflare: &CloudflareConfig{APIToken: "token", ZoneName: "example.com", RecordName: "ddns.example.com"}},
 			wantErr: "invalid mode",
 		},
 		{
 			name:    "invalid type",
-			cfg:     Config{APIToken: "token", ZoneName: "example.com", RecordName: "ddns.example.com", Mode: "upsert", Type: "CNAME", TTL: 1},
+			cfg:     Config{Mode: "upsert", Type: "CNAME", TTL: 1, Cloudflare: &CloudflareConfig{APIToken: "token", ZoneName: "example.com", RecordName: "ddns.example.com"}},
 			wantErr: "invalid type",
 		},
 		{
 			name:    "invalid TTL",
-			cfg:     Config{APIToken: "token", ZoneName: "example.com", RecordName: "ddns.example.com", Mode: "upsert", Type: "A", TTL: 60},
+			cfg:     Config{Mode: "upsert", Type: "A", TTL: 60, Cloudflare: &CloudflareConfig{APIToken: "token", ZoneName: "example.com", RecordName: "ddns.example.com"}},
 			wantErr: "invalid TTL",
 		},
 		{
 			name: "delete mode skips type and TTL checks",
-			cfg:  Config{APIToken: "token", ZoneName: "example.com", RecordName: "ddns.example.com", Mode: "delete"},
+			cfg:  Config{Mode: "delete", Cloudflare: &CloudflareConfig{APIToken: "token", ZoneName: "example.com", RecordName: "ddns.example.com"}},
 		},
 	}
 
@@ -131,7 +138,7 @@ func TestValidate(t *testing.T) {
 func TestLoad(t *testing.T) {
 	t.Run("valid file", func(t *testing.T) {
 		path := filepath.Join(t.TempDir(), "config.json")
-		content := `{"api_token":"token","zone_name":"example.com","record_name":"ddns.example.com","ttl":300}`
+		content := `{"type":"A","ttl":300,"cloudflare":{"api_token":"token","zone_name":"example.com","record_name":"ddns.example.com"}}`
 		if err := os.WriteFile(path, []byte(content), 0o600); err != nil {
 			t.Fatal(err)
 		}
@@ -140,7 +147,10 @@ func TestLoad(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Load() error = %v", err)
 		}
-		if cfg.APIToken != "token" || cfg.ZoneName != "example.com" || cfg.RecordName != "ddns.example.com" || cfg.TTL != 300 {
+		if cfg.Cloudflare == nil {
+			t.Fatal("Load() Cloudflare section = nil, want parsed section")
+		}
+		if cfg.Cloudflare.APIToken != "token" || cfg.Cloudflare.ZoneName != "example.com" || cfg.Cloudflare.RecordName != "ddns.example.com" || cfg.TTL != 300 {
 			t.Errorf("Load() = %+v, fields do not match file contents", cfg)
 		}
 	})
@@ -175,14 +185,16 @@ func TestExample(t *testing.T) {
 	}
 
 	want := Config{
-		APIToken:       "your-cloudflare-api-token",
-		ZoneName:       "example.com",
-		RecordName:     "ddns.example.com",
 		Type:           "A_AAAA",
 		TTL:            1,
 		IP:             "auto",
 		Mode:           "upsert",
 		UpdateInterval: new(defaultUpdateIntervalSeconds),
+		Cloudflare: &CloudflareConfig{
+			APIToken:   "your-cloudflare-api-token",
+			ZoneName:   "example.com",
+			RecordName: "ddns.example.com",
+		},
 	}
 	if !reflect.DeepEqual(cfg, want) {
 		t.Errorf("Example() = %+v, want %+v", cfg, want)

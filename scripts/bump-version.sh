@@ -1,5 +1,5 @@
 #!/bin/sh
-# bump-version.sh — bump CloudflareDDNS version (version.go + README badge).
+# bump-version.sh — bump ZJDDNS version (version.go + README badge).
 # Usage:
 #   sh scripts/bump-version.sh patch  # 1.6.0 → 1.6.1
 #   sh scripts/bump-version.sh minor  # 1.6.0 → 1.7.0
@@ -24,7 +24,7 @@ case "$BUMP" in
 esac
 
 # ── Parse current version from version.go ────────────────────────────────
-VERSION_FILE="cmd/cloudflareddns/version.go"
+VERSION_FILE="cmd/zjddns/version.go"
 CURRENT=$(grep 'Version\s*=' "$VERSION_FILE" | head -1 | sed 's/.*"\(.*\)".*/\1/')
 echo "Current version: $CURRENT"
 

@@ -1,10 +1,12 @@
 {
-  "api_token": "your-cloudflare-api-token",
-  "zone_name": "example.com",
-  "record_name": "ddns.example.com",
   "type": "A_AAAA",
   "ttl": 1,
   "ip": "auto",
   "mode": "upsert",
-  "update_interval": 300
+  "update_interval": 300,
+  "cloudflare": {
+    "api_token": "your-cloudflare-api-token",
+    "zone_name": "example.com",
+    "record_name": "ddns.example.com"
+  }
 }

@@ -1,4 +1,4 @@
-# CloudflareDDNS golangci-lint configuration.
+# ZJDDNS golangci-lint configuration.
 # Run: golangci-lint run && golangci-lint fmt
 version: "2"
 

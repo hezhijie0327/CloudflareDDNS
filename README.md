@@ -1,8 +1,18 @@
-# CloudflareDDNS
+# ZJDDNS
 
-[![Version](https://img.shields.io/badge/Version-1.6.1-informational)](https://github.com/hezhijie0327/CloudflareDDNS/releases)
+```
+███████╗     ██╗██████╗ ██████╗ ███╗   ██╗███████╗
+╚══███╔╝     ██║██╔══██╗██╔══██╗████╗  ██║██╔════╝
+  ███╔╝      ██║██║  ██║██║  ██║██╔██╗ ██║███████╗
+ ███╔╝  ██   ██║██║  ██║██║  ██║██║╚██╗██║╚════██║
+███████╗╚█████╔╝██████╔╝██████╔╝██║ ╚████║███████║
+╚══════╝ ╚════╝ ╚═════╝ ╚═════╝ ╚═╝  ╚═══╝╚══════╝
+
+```
+
+[![Version](https://img.shields.io/badge/Version-2.0.0-informational)](https://github.com/hezhijie0327/ZJDDNS/releases)
 [![License](https://img.shields.io/badge/License-Apache%202.0--Commons%20Clause-blue)](LICENSE)
-[![Go Version](https://img.shields.io/badge/Go-1.25-00ADD8?logo=go)](https://go.dev/)
+[![Go Version](https://img.shields.io/badge/Go-1.26-00ADD8?logo=go)](https://go.dev/)
 [![Lint](https://img.shields.io/badge/golangci--lint-0%20issues-success)](https://golangci-lint.run/)
 
 轻量级、零第三方依赖的 Cloudflare DDNS 更新工具。WAN IP 变化时自动更新 DNS 记录。
@@ -13,26 +23,26 @@
 
 ```bash
 # 运行容器（默认使用 config.json）
-docker run -v $(pwd)/config.json:/config.json hezhijie0327/cloudflareddns:latest
+docker run -v $(pwd)/config.json:/config.json hezhijie0327/zjddns:latest
 
 # 指定配置文件路径
-docker run -v $(pwd)/myconfig.json:/myconfig.json hezhijie0327/cloudflareddns:latest -config myconfig.json
+docker run -v $(pwd)/myconfig.json:/myconfig.json hezhijie0327/zjddns:latest -config myconfig.json
 ```
 
 ### 使用二进制
 
 ```bash
 # 构建
-go build -o cloudflareddns ./cmd/cloudflareddns
+go build -o zjddns ./cmd/zjddns
 
 # 运行（默认使用 config.json）
-./cloudflareddns
+./zjddns
 
 # 指定配置文件路径
-./cloudflareddns -config /path/to/config.json
+./zjddns -config /path/to/config.json
 
 # 生成示例配置文件
-./cloudflareddns -generate-config > config.json
+./zjddns -generate-config > config.json
 ```
 
 ## 核心特性
@@ -43,6 +53,7 @@ go build -o cloudflareddns ./cmd/cloudflareddns
 - 🧱 **零第三方依赖**：DNS 报文查询/解析为手写实现（`internal/ipdetect/dnsquery.go`），纯标准库构建
 - 🐳 **Docker 支持**：多架构 Docker 镜像（linux/amd64、linux/arm64）
 - 🔒 **安全**：支持 Cloudflare API Token（推荐）或传统的 X-Auth-Email/X-Auth-Key 认证
+- 🔌 **Provider 机制**：每个提供商一个配置子段，**可同时配置多个**（各更新各的域）；Cloudflare 为内置实现，新提供商以插件包形式接入（`providers/`）
 
 ## 命令行参数
 
@@ -55,37 +66,46 @@ go build -o cloudflareddns ./cmd/cloudflareddns
 
 ## 配置
 
-在二进制文件所在目录创建 `config.json` 文件，或使用 `-generate-config` 生成示例：
+在二进制文件所在目录创建 `config.json` 文件，或使用 `-generate-config` 生成示例。
+
+**可同时配置多个提供商**——每个提供商一个子段，各更新各自的记录（如 Cloudflare 更新 `ddns.example.com`、阿里云更新 `ddns.example.net`）。公用的检测与调度设置放在顶层。
 
 ```json
 {
-  "api_token": "your_cloudflare_api_token",
-  "zone_name": "example.com",
-  "record_name": "ddns.example.com",
-  "type": "A",
+  "type": "A_AAAA",
   "ttl": 1,
   "ip": "auto",
-  "proxy_status": false,
   "mode": "upsert",
-  "update_interval": 300
+  "update_interval": 300,
+  "cloudflare": {
+    "api_token": "your_cloudflare_api_token",
+    "zone_name": "example.com",
+    "record_name": "ddns.example.com",
+    "proxy_status": false
+  }
 }
 ```
 
-### 配置选项
+### 公用配置选项（顶层）
 
 | 字段             | 类型   | 必填 | 说明                                                                  |
 | ---------------- | ------ | ---- | --------------------------------------------------------------------- |
-| `api_token`      | string | ✅   | 您的 Cloudflare API Token（推荐）                                     |
-| `x_auth_email`   | string | ❌   | ~~您的 Cloudflare 账户邮箱~~（已弃用，请使用 api_token）              |
-| `x_auth_key`     | string | ❌   | ~~您的 Cloudflare API 密钥~~（已弃用，请使用 api_token）              |
-| `zone_name`      | string | ✅   | 您的域名（如 `example.com`）                                          |
-| `record_name`    | string | ✅   | 完整的 DNS 记录名称（如 `ddns.example.com`）                          |
 | `type`           | string | ❌   | 记录类型：`A`、`AAAA` 或 `A_AAAA`（默认：`A`）                       |
 | `ttl`            | int    | ❌   | TTL 值：`1`（自动）或 `120`-`86400` 秒（默认：`1`）                   |
 | `ip`             | string | ❌   | IP 地址：`auto`（自动检测）、静态 IP 或 `ipv4,ipv6`（默认：`auto`）   |
-| `proxy_status`   | bool   | ❌   | 启用 Cloudflare 代理：`true` 或 `false`（默认：`false`）              |
 | `mode`           | string | ❌   | 操作模式：`upsert`（创建/更新）或 `delete`（默认：`upsert`）          |
 | `update_interval`| int    | ❌   | 更新间隔秒数（默认：`300`，`0` 表示只运行一次）                       |
+
+### Cloudflare 提供商配置（`"cloudflare"` 段）
+
+| 字段           | 类型   | 必填 | 说明                                                                 |
+| -------------- | ------ | ---- | -------------------------------------------------------------------- |
+| `api_token`    | string | ✅   | 您的 Cloudflare API Token（推荐）                                    |
+| `x_auth_email` | string | ❌   | ~~您的 Cloudflare 账户邮箱~~（已弃用，请使用 api_token）             |
+| `x_auth_key`   | string | ❌   | ~~您的 Cloudflare API 密钥~~（已弃用，请使用 api_token）             |
+| `zone_name`    | string | ✅   | 您的域名（如 `example.com`）                                         |
+| `record_name`  | string | ✅   | 完整的 DNS 记录名称（如 `ddns.example.com`）                         |
+| `proxy_status` | bool   | ❌   | 启用 Cloudflare 代理：`true` 或 `false`（默认：`false`）             |
 
 ### 有效的 TTL 值
 
@@ -124,14 +144,16 @@ go build -o cloudflareddns ./cmd/cloudflareddns
 
 ```json
 {
-  "api_token": "your_cloudflare_api_token",
-  "zone_name": "example.com",
-  "record_name": "home.example.com",
   "type": "A",
   "ttl": 1,
   "ip": "auto",
-  "proxy_status": false,
-  "mode": "upsert"
+  "mode": "upsert",
+  "cloudflare": {
+    "api_token": "your_cloudflare_api_token",
+    "zone_name": "example.com",
+    "record_name": "home.example.com",
+    "proxy_status": false
+  }
 }
 ```
 
@@ -139,14 +161,16 @@ go build -o cloudflareddns ./cmd/cloudflareddns
 
 ```json
 {
-  "api_token": "your_cloudflare_api_token",
-  "zone_name": "example.com",
-  "record_name": "home.example.com",
   "type": "A_AAAA",
   "ttl": 300,
   "ip": "auto",
-  "proxy_status": true,
-  "mode": "upsert"
+  "mode": "upsert",
+  "cloudflare": {
+    "api_token": "your_cloudflare_api_token",
+    "zone_name": "example.com",
+    "record_name": "home.example.com",
+    "proxy_status": true
+  }
 }
 ```
 
@@ -154,14 +178,16 @@ go build -o cloudflareddns ./cmd/cloudflareddns
 
 ```json
 {
-  "api_token": "your_cloudflare_api_token",
-  "zone_name": "example.com",
-  "record_name": "server.example.com",
   "type": "A",
   "ttl": 600,
   "ip": "192.168.1.100",
-  "proxy_status": false,
-  "mode": "upsert"
+  "mode": "upsert",
+  "cloudflare": {
+    "api_token": "your_cloudflare_api_token",
+    "zone_name": "example.com",
+    "record_name": "server.example.com",
+    "proxy_status": false
+  }
 }
 ```
 
@@ -169,23 +195,26 @@ go build -o cloudflareddns ./cmd/cloudflareddns
 
 ```json
 {
-  "api_token": "your_cloudflare_api_token",
-  "zone_name": "example.com",
-  "record_name": "old.example.com",
-  "mode": "delete"
+  "mode": "delete",
+  "cloudflare": {
+    "api_token": "your_cloudflare_api_token",
+    "zone_name": "example.com",
+    "record_name": "old.example.com"
+  }
 }
 ```
 
 ## 项目结构
 
 ```
-cloudflareddns/
-├── cmd/cloudflareddns/   ← 二进制入口（CLI 参数、更新循环、版本信息）
-├── config/               ← 配置加载、默认值、校验、示例生成
-├── cloudflare/           ← Cloudflare API v4 客户端（zone、DNS 记录 CRUD）
-├── ddns/                 ← upsert/delete 编排（API 客户端 + IP 检测）
-├── internal/ipdetect/    ← WAN IP 检测（手写 DNS 查询 + HTTP trace 回退）
-└── scripts/              ← pre-commit hook 安装、版本 bump
+zjddns/
+├── cmd/zjddns/             ← 二进制入口（CLI 参数、banner、更新循环、版本信息）
+├── config/                 ← 配置加载、默认值、校验、示例生成
+├── providers/              ← DDNS Provider 构造（每个配置子段一个实例，可并存）
+│   └── cloudflare/         ← Cloudflare API v4 客户端（zone、DNS 记录 CRUD）
+├── ddns/                   ← Provider 接口 + upsert/delete 编排（IP 检测接线）
+├── internal/ipdetect/      ← WAN IP 检测（手写 DNS 查询 + HTTP trace 回退）
+└── scripts/                ← pre-commit hook 安装、版本 bump
 ```
 
 ## 获取 Cloudflare API 凭证
@@ -215,7 +244,17 @@ cloudflareddns/
 ## 输出示例
 
 ```
-🚀 Cloudflare DDNS Tool v1.6.1 (go1.26.5)
+███████╗     ██╗██████╗ ██████╗ ███╗   ██╗███████╗
+╚══███╔╝     ██║██╔══██╗██╔══██╗████╗  ██║██╔════╝
+  ███╔╝      ██║██║  ██║██║  ██║██╔██╗ ██║███████╗
+ ███╔╝  ██   ██║██║  ██║██║  ██║██║╚██╗██║╚════██║
+███████╗╚█████╔╝██████╔╝██████╔╝██║ ╚████║███████║
+╚══════╝ ╚════╝ ╚═════╝ ╚═════╝ ╚═╝  ╚═══╝╚══════╝
+  v2.0.0 (go1.26.5)
+
+  Lightweight zero-dependency DDNS updater
+  https://github.com/hezhijie0327/ZJDDNS
+__________________________________\o/_______
 
 🌐 Zone ID: abc123def456
 
@@ -249,7 +288,7 @@ go test ./...
 go build \
   -ldflags="-X main.CommitHash=$(git rev-parse --short HEAD) \
             -X main.BuildTime=$(date -u +%Y-%m-%dT%H:%M:%S)" \
-  -o cloudflareddns ./cmd/cloudflareddns
+  -o zjddns ./cmd/zjddns
 ```
 
 ### 开发辅助脚本

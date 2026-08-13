@@ -1,21 +1,22 @@
-// Package cloudflare implements a minimal Cloudflare API v4 client
-// for zone lookup and DNS record management.
+// Package cloudflare implements the Cloudflare DDNS provider (API v4)
+// with zone lookup and DNS record management.
 package cloudflare
 
 import (
-	"cloudflareddns/config"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
 	"strings"
 	"time"
+	"zjddns/config"
 )
 
 // Client 封装的HTTP客户端
 type Client struct {
 	httpClient *http.Client
 	cfg        *config.Config
+	zoneID     string
 }
 
 // Response API响应结构
@@ -33,12 +34,29 @@ const (
 	RequestTimeout = 5 * time.Second
 )
 
-// New returns a Client bound to the given configuration.
-func New(cfg *config.Config) *Client {
-	return &Client{
+// New resolves the Zone ID and returns a Client bound to the given
+// configuration.
+func New(cfg *config.Config) (*Client, error) {
+	c := &Client{
 		httpClient: &http.Client{Timeout: RequestTimeout},
 		cfg:        cfg,
 	}
+
+	// 检查是否使用了已弃用的认证方式
+	if cfg.Cloudflare.XAuthEmail != "" && cfg.Cloudflare.XAuthKey != "" && cfg.Cloudflare.APIToken == "" {
+		fmt.Printf("⚠️  WARNING: Using deprecated authentication method (x_auth_email + x_auth_key)\n")
+		fmt.Printf("⚠️  Please migrate to using 'api_token' instead\n")
+		fmt.Printf("⚠️  You can create an API token at: https://dash.cloudflare.com/profile/api-tokens\n\n")
+	}
+
+	zoneID, err := c.ZoneID()
+	if err != nil {
+		return nil, fmt.Errorf("get zone ID: %w", err)
+	}
+	fmt.Printf("🌐 Zone ID: %s\n", zoneID)
+	c.zoneID = zoneID
+
+	return c, nil
 }
 
 // request 发送HTTP请求
@@ -60,12 +78,12 @@ func (c *Client) request(method, path string, payload any) (*Response, error) {
 	}
 
 	// 支持新的 API Token 认证方式
-	if c.cfg.APIToken != "" {
-		req.Header.Set("Authorization", "Bearer "+c.cfg.APIToken)
+	if c.cfg.Cloudflare.APIToken != "" {
+		req.Header.Set("Authorization", "Bearer "+c.cfg.Cloudflare.APIToken)
 	} else {
 		// 向后兼容旧的认证方式
-		req.Header.Set("X-Auth-Email", c.cfg.XAuthEmail)
-		req.Header.Set("X-Auth-Key", c.cfg.XAuthKey)
+		req.Header.Set("X-Auth-Email", c.cfg.Cloudflare.XAuthEmail)
+		req.Header.Set("X-Auth-Key", c.cfg.Cloudflare.XAuthKey)
 	}
 	req.Header.Set("Content-Type", "application/json")
 

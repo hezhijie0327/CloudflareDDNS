@@ -5,15 +5,16 @@ import "encoding/json"
 // Example 返回示例配置的缩进JSON
 func Example() (string, error) {
 	cfg := &Config{
-		APIToken:       "your-cloudflare-api-token",
-		ZoneName:       "example.com",
-		RecordName:     "ddns.example.com",
 		Type:           "A_AAAA",
 		TTL:            1,
 		IP:             "auto",
-		ProxyStatus:    false,
 		Mode:           "upsert",
 		UpdateInterval: new(int),
+		Cloudflare: &CloudflareConfig{
+			APIToken:   "your-cloudflare-api-token",
+			ZoneName:   "example.com",
+			RecordName: "ddns.example.com",
+		},
 	}
 	*cfg.UpdateInterval = defaultUpdateIntervalSeconds
 
