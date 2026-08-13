@@ -12,7 +12,7 @@ import (
 )
 
 func main() {
-	// 自定义帮助信息
+	// Custom usage text.
 	flag.Usage = func() {
 		fmt.Fprintf(os.Stderr, "ZJDDNS - Dynamic DNS Update Client\n\n")
 		fmt.Fprintf(os.Stderr, "Version: %s\n\n", getVersion())
@@ -23,13 +23,13 @@ func main() {
 		fmt.Fprintf(os.Stderr, "  %s                            # Start with default config\n\n", os.Args[0])
 	}
 
-	// 解析命令行参数
+	// Parse the command line flags.
 	configPath := flag.String("config", "config.json", "Path to config file")
 	generateConfig := flag.Bool("generate-config", false, "Generate example config file")
 	showVersion := flag.Bool("version", false, "Show version information")
 	flag.Parse()
 
-	// 处理特殊参数
+	// Handle the special commands.
 	if *showVersion {
 		fmt.Printf("%s %s\n", ProjectName, getVersion())
 		return
@@ -45,27 +45,28 @@ func main() {
 		fmt.Fprintf(os.Stderr, "warning: writing banner: %v\n", err)
 	}
 
-	// 加载配置
+	// Load the configuration.
 	cfg, err := config.Load(*configPath)
 	if err != nil {
 		log.Errorf("CONFIG: Failed to load config: %v", err)
 		return
 	}
 
-	// 设置默认值
+	// Apply the defaults.
 	cfg.SetDefaults()
 
-	// 应用日志级别（支持 "debug:COMP1,COMP2" 组件过滤）
+	// Apply the log level (supports "debug:COMP1,COMP2" component filters).
 	lvl, components := log.ParseLevelFilter(cfg.LogLevel, log.Info)
 	log.SetLevelFilter(lvl, components)
 
-	// 验证配置
+	// Validate the configuration.
 	if err := cfg.Validate(); err != nil {
 		log.Errorf("CONFIG: Invalid config: %v", err)
 		return
 	}
 
-	// 构造所有已配置的 Provider（可同时使用多个提供商）
+	// Construct every configured provider; multiple providers may run at
+	// once, each updating its own records.
 	ps, err := providers.All(cfg)
 	if err != nil {
 		log.Errorf("CONFIG: Failed to initialize provider: %v", err)
@@ -73,38 +74,37 @@ func main() {
 	}
 	runner := ddns.New(ps, cfg)
 
-	// 获取更新间隔
+	// The update interval drives the scheduling loop.
 	updateInterval := cfg.Interval()
 
-	// 执行更新的函数（各 Provider 按自身配置的 mode 运行）
+	// Each provider runs according to its own configured mode.
 	runUpdate := func() {
 		runner.Run()
 	}
 
-	// 如果 update_interval 为 0，只运行一次
+	// An interval of 0 means run once.
 	if updateInterval <= 0 {
 		runUpdate()
 		return
 	}
 
-	// 定期执行更新
+	// Run periodically.
 	interval := time.Duration(updateInterval) * time.Second
 	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
 
 	log.Infof("DDNS: Running every %d seconds. Press Ctrl+C to stop.", updateInterval)
 
-	// 立即执行一次
+	// Run immediately, then on every tick.
 	runUpdate()
 
-	// 循环执行
 	for range ticker.C {
 		log.Infof("DDNS: %s - Starting scheduled update...", time.Now().Format(time.DateTime))
 		runUpdate()
 	}
 }
 
-// printExampleConfig 打印示例配置文件
+// printExampleConfig writes the example configuration to stdout.
 func printExampleConfig() {
 	data, err := config.Example()
 	if err != nil {

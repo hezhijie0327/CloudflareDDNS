@@ -1,4 +1,10 @@
 // Package config loads and validates the ZJDDNS configuration.
+//
+// The top level holds provider-agnostic settings (IP resolution, update
+// scheduling, logging); each provider owns a nested section (e.g.
+// "cloudflare": {...}). Multiple provider sections may be configured at
+// once — every configured section runs concurrently and updates its own
+// records.
 package config
 
 import (
@@ -7,16 +13,15 @@ import (
 	"os"
 )
 
-// Config 配置结构：顶层为所有提供商公用的设置，
-// 每个提供商一个子段（如 "cloudflare": {...}），可同时配置多个。
+// Config is the top-level configuration structure.
 type Config struct {
-	IP             string            `json:"ip,omitempty"`              // "auto" or specific IP or "ipv4,ipv6" (default: auto)
+	IP             string            `json:"ip,omitempty"`              // "auto" or a static IP or "ipv4,ipv6" (default: auto)
 	UpdateInterval *int              `json:"update_interval,omitempty"` // Update interval in seconds (nil/default: 300, 0: run once)
 	LogLevel       string            `json:"log_level,omitempty"`       // e.g. "info" or "debug:CLOUDFLARE,IPDETECT" (default: info)
 	Cloudflare     *CloudflareConfig `json:"cloudflare,omitempty"`
 }
 
-// Load 从JSON文件加载配置
+// Load reads and parses the JSON config file at path.
 func Load(path string) (*Config, error) {
 	data, err := os.ReadFile(path) //nolint:gosec // path is the user-supplied config file location
 	if err != nil {

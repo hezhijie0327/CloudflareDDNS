@@ -1,21 +1,31 @@
 package cloudflare
 
-import "errors"
+import (
+	"encoding/json"
+	"fmt"
+	"net/http"
+)
 
-// ZoneID 获取Zone ID
+// zone is a Cloudflare zone entry.
+type zone struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
+}
+
+// ZoneID returns the ID of the configured zone.
 func (c *Client) ZoneID() (string, error) {
-	resp, err := c.request("GET", "/client/v4/zones?name="+c.cfg.Cloudflare.ZoneName, nil)
+	resp, err := c.request(http.MethodGet, "/client/v4/zones?name="+c.cfg.Cloudflare.ZoneName, nil)
 	if err != nil {
 		return "", err
 	}
 
-	if results, ok := resp.Result.([]any); ok && len(results) > 0 {
-		if result, ok := results[0].(map[string]any); ok {
-			if id, ok := result["id"].(string); ok {
-				return id, nil
-			}
-		}
+	var zones []zone
+	if err := json.Unmarshal(resp.Result, &zones); err != nil {
+		return "", fmt.Errorf("decode zones: %w", err)
+	}
+	if len(zones) == 0 {
+		return "", ErrZoneNotFound
 	}
 
-	return "", errors.New("zone not found")
+	return zones[0].ID, nil
 }

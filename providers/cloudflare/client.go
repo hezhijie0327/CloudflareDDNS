@@ -1,9 +1,10 @@
-// Package cloudflare implements the Cloudflare DDNS provider (API v4)
-// with zone lookup and DNS record management.
+// Package cloudflare implements the Cloudflare DDNS provider: a minimal
+// Cloudflare API v4 client with zone lookup and DNS record management.
 package cloudflare
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -13,37 +14,54 @@ import (
 	"zjddns/internal/log"
 )
 
-// Client 封装的HTTP客户端
+// Client is an HTTP client for the Cloudflare API v4, bound to a
+// configured zone.
 type Client struct {
 	httpClient *http.Client
+	baseURL    string
 	cfg        *config.Config
 	zoneID     string
 }
 
-// Response API响应结构
-type Response struct {
-	Success bool             `json:"success"`
-	Result  any              `json:"result"`
-	Errors  []map[string]any `json:"errors"`
+// response is the common Cloudflare API envelope.
+type response struct {
+	Success bool            `json:"success"`
+	Result  json.RawMessage `json:"result"`
+	Errors  []apiError      `json:"errors"`
+}
+
+// apiError carries a single Cloudflare API error entry.
+type apiError struct {
+	Code    int    `json:"code"`
+	Message string `json:"message"`
 }
 
 const (
-	// APIBase is the base URL of the Cloudflare API v4.
-	APIBase = "https://api.cloudflare.com"
+	// defaultAPIBase is the Cloudflare API v4 base URL.
+	defaultAPIBase = "https://api.cloudflare.com"
 
-	// RequestTimeout bounds every API call.
-	RequestTimeout = 5 * time.Second
+	// requestTimeout bounds every API call.
+	requestTimeout = 5 * time.Second
+)
+
+// Sentinel errors for provider states callers may check.
+var (
+	// ErrZoneNotFound is returned when the configured zone does not exist.
+	ErrZoneNotFound = errors.New("zone not found")
+	// ErrRecordNotFound is returned when a DNS record lookup has no content.
+	ErrRecordNotFound = errors.New("record not found")
 )
 
 // New resolves the Zone ID and returns a Client bound to the given
 // configuration.
 func New(cfg *config.Config) (*Client, error) {
 	c := &Client{
-		httpClient: &http.Client{Timeout: RequestTimeout},
+		httpClient: &http.Client{Timeout: requestTimeout},
+		baseURL:    defaultAPIBase,
 		cfg:        cfg,
 	}
 
-	// 检查是否使用了已弃用的认证方式
+	// Warn about the deprecated authentication method before any API call.
 	if cfg.Cloudflare.XAuthEmail != "" && cfg.Cloudflare.XAuthKey != "" && cfg.Cloudflare.APIToken == "" {
 		log.Warnf("CLOUDFLARE: Using deprecated authentication method (x_auth_email + x_auth_key)")
 		log.Warnf("CLOUDFLARE: Please migrate to using 'api_token' instead")
@@ -60,9 +78,10 @@ func New(cfg *config.Config) (*Client, error) {
 	return c, nil
 }
 
-// request 发送HTTP请求
-func (c *Client) request(method, path string, payload any) (*Response, error) {
-	url := APIBase + path
+// request sends an authenticated API request and decodes the JSON
+// envelope.
+func (c *Client) request(method, path string, payload any) (*response, error) {
+	url := c.baseURL + path
 
 	var bodyReader io.Reader
 	if payload != nil {
@@ -78,11 +97,11 @@ func (c *Client) request(method, path string, payload any) (*Response, error) {
 		return nil, err
 	}
 
-	// 支持新的 API Token 认证方式
+	// Prefer API Token authentication; the legacy X-Auth-* headers are
+	// kept for backward compatibility.
 	if c.cfg.Cloudflare.APIToken != "" {
 		req.Header.Set("Authorization", "Bearer "+c.cfg.Cloudflare.APIToken)
 	} else {
-		// 向后兼容旧的认证方式
 		req.Header.Set("X-Auth-Email", c.cfg.Cloudflare.XAuthEmail)
 		req.Header.Set("X-Auth-Key", c.cfg.Cloudflare.XAuthKey)
 	}
@@ -101,7 +120,7 @@ func (c *Client) request(method, path string, payload any) (*Response, error) {
 		return nil, err
 	}
 
-	var cfResp Response
+	var cfResp response
 	if err := json.Unmarshal(body, &cfResp); err != nil {
 		return nil, err
 	}

@@ -1,26 +1,30 @@
 package cloudflare
 
 import (
+	"zjddns/config"
 	"zjddns/internal/log"
 )
 
-// Mode 返回本提供商配置的操作模式
+// Mode returns the operation mode configured for this provider.
 func (c *Client) Mode() string {
 	return c.cfg.Cloudflare.Mode
 }
 
-// Types 返回本提供商处理的记录类型列表
+// Types returns the record types this provider handles.
 func (c *Client) Types() []string {
-	if c.cfg.Cloudflare.Type == "A_AAAA" {
-		return []string{"A", "AAAA"}
+	if c.cfg.Cloudflare.Type == config.TypeAAndAAAA {
+		return []string{config.TypeA, config.TypeAAAA}
 	}
 	return []string{c.cfg.Cloudflare.Type}
 }
 
-// Upsert 确保指定类型的记录指向 ip，不存在则创建，存在且内容不同则更新。
-// 控制台输出（含失败信息）由本方法打印，返回的 error 供调用方程序化判断。
+// Upsert ensures the record of the given type points to ip, creating it
+// when missing or updating it when the current content differs.
+//
+// Record-level logging (including failures) is owned by the provider;
+// the returned error is informational for callers.
 func (c *Client) Upsert(recordType, ip string) error {
-	// 检查记录是否存在
+	// Check whether the record exists.
 	recordID, _ := c.RecordID(c.zoneID, recordType)
 
 	record := Record{
@@ -32,7 +36,7 @@ func (c *Client) Upsert(recordType, ip string) error {
 	}
 
 	if recordID == "" {
-		// 记录不存在，创建新记录
+		// Missing record: create it.
 		log.Infof("CLOUDFLARE: Record does not exist, creating...")
 
 		if err := c.CreateRecord(c.zoneID, record); err != nil {
@@ -44,7 +48,7 @@ func (c *Client) Upsert(recordType, ip string) error {
 		return nil
 	}
 
-	// 记录存在，检查是否需要更新
+	// Existing record: update it when the content differs.
 	log.Infof("CLOUDFLARE: Record ID: %s", recordID)
 
 	dnsContent, err := c.RecordContent(c.zoneID, recordID)
@@ -70,10 +74,12 @@ func (c *Client) Upsert(recordType, ip string) error {
 	return nil
 }
 
-// Delete 删除指定类型的记录。
-// 控制台输出（含失败信息）由本方法打印，返回的 error 供调用方程序化判断。
+// Delete removes the record of the given type.
+//
+// Record-level logging (including failures) is owned by the provider;
+// the returned error is informational for callers.
 func (c *Client) Delete(recordType string) error {
-	// 获取记录ID
+	// Look up the record ID.
 	recordID, _ := c.RecordID(c.zoneID, recordType)
 	if recordID == "" {
 		log.Infof("CLOUDFLARE: %s record does not exist", recordType)
@@ -81,7 +87,6 @@ func (c *Client) Delete(recordType string) error {
 	}
 	log.Infof("CLOUDFLARE: Record ID: %s", recordID)
 
-	// 删除记录
 	if err := c.DeleteRecord(c.zoneID, recordID); err != nil {
 		log.Errorf("CLOUDFLARE: Failed to delete record: %v", err)
 		return err

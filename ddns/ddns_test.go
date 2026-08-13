@@ -6,13 +6,13 @@ import (
 	"zjddns/config"
 )
 
-// upsertCall 记录一次 Upsert 调用的参数
+// upsertCall records the arguments of one Upsert call.
 type upsertCall struct {
 	recordType string
 	ip         string
 }
 
-// stubProvider 记录调用参数，不触网
+// stubProvider records its calls without touching the network.
 type stubProvider struct {
 	mode    string
 	types   []string
@@ -32,6 +32,41 @@ func (p *stubProvider) Upsert(recordType, ip string) error {
 func (p *stubProvider) Delete(recordType string) error {
 	p.deletes = append(p.deletes, recordType)
 	return nil
+}
+
+func TestStaticIP(t *testing.T) {
+	tests := []struct {
+		name       string
+		setting    string
+		recordType string
+		want       string
+		wantErr    bool
+	}{
+		{name: "single IPv4", setting: "203.0.113.1", recordType: config.TypeA, want: "203.0.113.1"},
+		{name: "dual takes IPv4", setting: "203.0.113.1,2001:db8::1", recordType: config.TypeA, want: "203.0.113.1"},
+		{name: "dual takes IPv6", setting: "203.0.113.1,2001:db8::1", recordType: config.TypeAAAA, want: "2001:db8::1"},
+		{name: "single IPv6", setting: "2001:db8::1", recordType: config.TypeAAAA, want: "2001:db8::1"},
+		{name: "family mismatch", setting: "2001:db8::1", recordType: config.TypeA, wantErr: true},
+		{name: "garbage", setting: "nope", recordType: config.TypeA, wantErr: true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := staticIP(tt.setting, tt.recordType)
+			if tt.wantErr {
+				if err == nil {
+					t.Fatalf("staticIP() error = nil, want error")
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("staticIP() error = %v", err)
+			}
+			if got != tt.want {
+				t.Errorf("staticIP() = %q, want %q", got, tt.want)
+			}
+		})
+	}
 }
 
 func TestRunnerRunUpsert(t *testing.T) {

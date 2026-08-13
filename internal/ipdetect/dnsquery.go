@@ -10,39 +10,39 @@ import (
 	"time"
 )
 
-// dnsQueryTXT 发送DNS TXT查询并返回记录内容
+// dnsQueryTXT sends a DNS TXT query and returns the record content.
 func dnsQueryTXT(server, name string) (string, error) {
 	id := uint16(time.Now().UnixNano()) //nolint:gosec // DNS query ID, truncation to 16 bits is intentional
 	query := buildDNSQuery(id, name)
 
-	// 优先UDP查询，响应截断（TC标志）时回退到TCP
+	// UDP first; fall back to TCP when the response is truncated (TC flag).
 	return dnsQueryUDP(server, query, id)
 }
 
-// buildDNSQuery 构建DNS查询包（TXT类型，CH类）
+// buildDNSQuery builds a DNS query packet (type TXT, class CH).
 func buildDNSQuery(id uint16, name string) []byte {
 	// Header: ID(2) + Flags(2) + QDCOUNT(2) + ANCOUNT(2) + NSCOUNT(2) + ARCOUNT(2)
 	query := make([]byte, 0, 12+len(name)+2+4)
 	query = binary.BigEndian.AppendUint16(query, id)
-	query = binary.BigEndian.AppendUint16(query, 0x0100) // 设置RD（期望递归）标志
+	query = binary.BigEndian.AppendUint16(query, 0x0100) // RD (recursion desired) flag
 	query = binary.BigEndian.AppendUint16(query, 1)      // QDCOUNT
 	query = binary.BigEndian.AppendUint16(query, 0)      // ANCOUNT
 	query = binary.BigEndian.AppendUint16(query, 0)      // NSCOUNT
 	query = binary.BigEndian.AppendUint16(query, 0)      // ARCOUNT
 
-	// 编码域名
+	// Encode the domain name.
 	for label := range strings.SplitSeq(name, ".") {
 		query = append(query, byte(len(label))) //nolint:gosec // label from constant domain name, always <= 63
 		query = append(query, label...)
 	}
 
-	// 域名根终止符 + 查询类型TXT(16)和类CH(3)
+	// Root terminator + query type TXT(16) and class CH(3).
 	query = append(query, 0, 0x00, 0x10, 0x00, 0x03)
 
 	return query
 }
 
-// dnsQueryUDP 通过UDP发送DNS查询
+// dnsQueryUDP sends the DNS query over UDP.
 func dnsQueryUDP(server string, query []byte, id uint16) (string, error) {
 	conn, err := net.DialTimeout("udp", net.JoinHostPort(server, "53"), detectTimeout)
 	if err != nil {
@@ -63,7 +63,7 @@ func dnsQueryUDP(server string, query []byte, id uint16) (string, error) {
 		return "", err
 	}
 
-	// 响应被截断（TC标志）时使用TCP重试
+	// Retry over TCP when the response is truncated (TC flag).
 	if n >= 4 && binary.BigEndian.Uint16(buf[2:4])&0x0200 != 0 {
 		return dnsQueryTCP(server, query, id)
 	}
@@ -71,7 +71,8 @@ func dnsQueryUDP(server string, query []byte, id uint16) (string, error) {
 	return parseDNSResponse(buf[:n], id)
 }
 
-// dnsQueryTCP 通过TCP发送DNS查询（用于UDP响应截断的情况）
+// dnsQueryTCP sends the DNS query over TCP (used when the UDP response
+// is truncated).
 func dnsQueryTCP(server string, query []byte, id uint16) (string, error) {
 	conn, err := net.DialTimeout("tcp", net.JoinHostPort(server, "53"), detectTimeout)
 	if err != nil {
@@ -82,7 +83,7 @@ func dnsQueryTCP(server string, query []byte, id uint16) (string, error) {
 	}()
 	_ = conn.SetDeadline(time.Now().Add(detectTimeout))
 
-	// TCP查询需要在消息前附加2字节长度前缀
+	// TCP messages carry a 2-byte length prefix.
 	msg := make([]byte, 0, len(query)+2)
 	msg = binary.BigEndian.AppendUint16(msg, uint16(len(query))) //nolint:gosec // query is a ~40-byte built query, no overflow
 	msg = append(msg, query...)
@@ -90,7 +91,7 @@ func dnsQueryTCP(server string, query []byte, id uint16) (string, error) {
 		return "", err
 	}
 
-	// 先读取2字节响应长度前缀
+	// Read the 2-byte response length prefix first.
 	header := make([]byte, 2)
 	if _, err := io.ReadFull(conn, header); err != nil {
 		return "", err
@@ -104,7 +105,8 @@ func dnsQueryTCP(server string, query []byte, id uint16) (string, error) {
 	return parseDNSResponse(buf, id)
 }
 
-// parseDNSResponse 解析DNS响应，返回TXT记录内容
+// parseDNSResponse parses a DNS response and returns the TXT record
+// content.
 func parseDNSResponse(resp []byte, id uint16) (string, error) {
 	if len(resp) < 12 {
 		return "", errors.New("DNS response too short")
@@ -122,14 +124,14 @@ func parseDNSResponse(resp []byte, id uint16) (string, error) {
 		return "", fmt.Errorf("DNS response error: rcode=%d", flags&0x000F)
 	}
 
-	// 跳过问题段
+	// Skip the question section.
 	offset := skipDNSName(resp, 12)
 	if offset < 0 || offset+4 > len(resp) {
 		return "", errors.New("invalid DNS question section")
 	}
-	offset += 4 // 跳过Type和Class
+	offset += 4 // skip Type and Class
 
-	// 解析答案段
+	// Parse the answer section.
 	anCount := int(binary.BigEndian.Uint16(resp[6:8]))
 	var txts []string
 	for range anCount {
@@ -167,7 +169,7 @@ func parseDNSResponse(resp []byte, id uint16) (string, error) {
 	return strings.Join(txts, ""), nil
 }
 
-// skipDNSName 跳过DNS名称，支持压缩指针
+// skipDNSName skips a DNS name, supporting compression pointers.
 func skipDNSName(msg []byte, offset int) int {
 	for offset < len(msg) {
 		length := int(msg[offset])
@@ -175,7 +177,7 @@ func skipDNSName(msg []byte, offset int) int {
 			return offset + 1
 		}
 		if length&0xC0 == 0xC0 {
-			// 压缩指针，固定占用2字节
+			// Compression pointer occupies 2 bytes.
 			return offset + 2
 		}
 		if length > 63 {

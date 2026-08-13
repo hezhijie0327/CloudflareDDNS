@@ -2,18 +2,18 @@ package config
 
 import "encoding/json"
 
-// Example 返回示例配置的缩进JSON
+// Example returns the example configuration as indented JSON.
 func Example() (string, error) {
 	cfg := &Config{
-		IP:             "auto",
+		IP:             DefaultIP,
 		UpdateInterval: new(int),
-		LogLevel:       "info",
+		LogLevel:       DefaultLogLevel,
 		Cloudflare: &CloudflareConfig{
 			APIToken:   "your-cloudflare-api-token",
 			ZoneName:   "example.com",
 			RecordName: "ddns.example.com",
-			Mode:       "upsert",
-			Type:       "A_AAAA",
+			Mode:       ModeUpsert,
+			Type:       TypeAAndAAAA,
 			TTL:        1,
 		},
 	}

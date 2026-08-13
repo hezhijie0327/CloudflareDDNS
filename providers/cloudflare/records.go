@@ -1,8 +1,9 @@
 package cloudflare
 
 import (
-	"errors"
+	"encoding/json"
 	"fmt"
+	"net/http"
 )
 
 // Record is the DNS record payload sent to the API.
@@ -14,54 +15,67 @@ type Record struct {
 	Proxied bool   `json:"proxied"`
 }
 
-// RecordID 获取DNS记录ID，记录不存在时返回空字符串
-func (c *Client) RecordID(zoneID, recordType string) (string, error) {
-	resp, err := c.request("GET", fmt.Sprintf("/client/v4/zones/%s/dns_records?name=%s&type=%s", zoneID, c.cfg.Cloudflare.RecordName, recordType), nil)
-	if err != nil {
-		return "", err
-	}
-
-	if results, ok := resp.Result.([]any); ok && len(results) > 0 {
-		if result, ok := results[0].(map[string]any); ok {
-			if id, ok := result["id"].(string); ok {
-				return id, nil
-			}
-		}
-	}
-
-	return "", nil // 不存在返回空字符串，不报错
+// dnsRecord is a DNS record entry as returned by the API.
+type dnsRecord struct {
+	ID      string `json:"id"`
+	Type    string `json:"type"`
+	Name    string `json:"name"`
+	Content string `json:"content"`
+	TTL     int    `json:"ttl"`
+	Proxied bool   `json:"proxied"`
 }
 
-// RecordContent 获取DNS记录内容
-func (c *Client) RecordContent(zoneID, recordID string) (string, error) {
-	resp, err := c.request("GET", fmt.Sprintf("/client/v4/zones/%s/dns_records/%s", zoneID, recordID), nil)
+// RecordID returns the ID of the DNS record matching the configured name
+// and type, or "" when the record does not exist.
+func (c *Client) RecordID(zoneID, recordType string) (string, error) {
+	resp, err := c.request(http.MethodGet, fmt.Sprintf("/client/v4/zones/%s/dns_records?name=%s&type=%s", zoneID, c.cfg.Cloudflare.RecordName, recordType), nil)
 	if err != nil {
 		return "", err
 	}
 
-	if result, ok := resp.Result.(map[string]any); ok {
-		if content, ok := result["content"].(string); ok {
-			return content, nil
-		}
+	var records []dnsRecord
+	if err := json.Unmarshal(resp.Result, &records); err != nil {
+		return "", fmt.Errorf("decode DNS records: %w", err)
+	}
+	if len(records) == 0 {
+		return "", nil // an absent record is not an error
 	}
 
-	return "", errors.New("record content not found")
+	return records[0].ID, nil
+}
+
+// RecordContent returns the current content of the given DNS record.
+func (c *Client) RecordContent(zoneID, recordID string) (string, error) {
+	resp, err := c.request(http.MethodGet, fmt.Sprintf("/client/v4/zones/%s/dns_records/%s", zoneID, recordID), nil)
+	if err != nil {
+		return "", err
+	}
+
+	var record dnsRecord
+	if err := json.Unmarshal(resp.Result, &record); err != nil {
+		return "", fmt.Errorf("decode DNS record: %w", err)
+	}
+	if record.Content == "" {
+		return "", ErrRecordNotFound
+	}
+
+	return record.Content, nil
 }
 
 // CreateRecord creates a new DNS record in the zone.
 func (c *Client) CreateRecord(zoneID string, record Record) error {
-	_, err := c.request("POST", fmt.Sprintf("/client/v4/zones/%s/dns_records", zoneID), record)
+	_, err := c.request(http.MethodPost, fmt.Sprintf("/client/v4/zones/%s/dns_records", zoneID), record)
 	return err
 }
 
 // UpdateRecord updates an existing DNS record.
 func (c *Client) UpdateRecord(zoneID, recordID string, record Record) error {
-	_, err := c.request("PUT", fmt.Sprintf("/client/v4/zones/%s/dns_records/%s", zoneID, recordID), record)
+	_, err := c.request(http.MethodPut, fmt.Sprintf("/client/v4/zones/%s/dns_records/%s", zoneID, recordID), record)
 	return err
 }
 
 // DeleteRecord deletes a DNS record.
 func (c *Client) DeleteRecord(zoneID, recordID string) error {
-	_, err := c.request("DELETE", fmt.Sprintf("/client/v4/zones/%s/dns_records/%s", zoneID, recordID), nil)
+	_, err := c.request(http.MethodDelete, fmt.Sprintf("/client/v4/zones/%s/dns_records/%s", zoneID, recordID), nil)
 	return err
 }

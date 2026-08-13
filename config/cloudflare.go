@@ -5,7 +5,7 @@ import (
 	"fmt"
 )
 
-// CloudflareConfig Cloudflare 提供商配置
+// CloudflareConfig is the Cloudflare provider section.
 type CloudflareConfig struct {
 	APIToken string `json:"api_token"`
 	// Deprecated: Use api_token instead
@@ -20,20 +20,21 @@ type CloudflareConfig struct {
 	ProxyStatus bool   `json:"proxy_status,omitempty"` // true or false (default: false)
 }
 
-// setDefaults 设置默认值
+// setDefaults fills empty settings with their default values.
 func (c *CloudflareConfig) setDefaults() {
 	if c.Mode == "" {
-		c.Mode = "upsert"
+		c.Mode = DefaultMode
 	}
 	if c.Type == "" {
-		c.Type = "A"
+		c.Type = DefaultType
 	}
 	if c.TTL == 0 {
 		c.TTL = 1
 	}
 }
 
-// validate 验证 Cloudflare 提供商配置
+// validate checks the Cloudflare provider section for completeness and
+// self-consistency.
 func (c *CloudflareConfig) validate() error {
 	if c.APIToken == "" && (c.XAuthEmail == "" || c.XAuthKey == "") {
 		return errors.New("missing required authentication (api_token or x_auth_email + x_auth_key)")
@@ -45,7 +46,8 @@ func (c *CloudflareConfig) validate() error {
 		return fmt.Errorf("invalid mode: %s (must be upsert/delete)", c.Mode)
 	}
 
-	if c.Mode == "upsert" {
+	// Type and TTL only apply to upsert mode.
+	if c.Mode == ModeUpsert {
 		if !validTypes[c.Type] {
 			return fmt.Errorf("invalid type: %s (must be A/AAAA/A_AAAA)", c.Type)
 		}

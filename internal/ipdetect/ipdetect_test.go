@@ -183,61 +183,25 @@ func TestParseDNSResponse(t *testing.T) {
 	}
 }
 
-func TestValidIP(t *testing.T) {
+func TestValidFamilyIP(t *testing.T) {
 	tests := []struct {
-		name       string
-		ip         string
-		recordType string
-		want       bool
+		name      string
+		ip        string
+		forceIPv6 bool
+		want      bool
 	}{
-		{name: "IPv4 for A", ip: "203.0.113.1", recordType: "A", want: true},
-		{name: "IPv6 for A rejected", ip: "2001:db8::1", recordType: "A", want: false},
-		{name: "IPv6 for AAAA", ip: "2001:db8::1", recordType: "AAAA", want: true},
-		{name: "IPv4 for AAAA rejected", ip: "203.0.113.1", recordType: "AAAA", want: false},
-		{name: "garbage rejected", ip: "not-an-ip", recordType: "A", want: false},
-		{name: "empty rejected", ip: "", recordType: "A", want: false},
+		{name: "IPv4 matches IPv4 family", ip: "203.0.113.1", forceIPv6: false, want: true},
+		{name: "IPv6 rejected for IPv4 family", ip: "2001:db8::1", forceIPv6: false, want: false},
+		{name: "IPv6 matches IPv6 family", ip: "2001:db8::1", forceIPv6: true, want: true},
+		{name: "IPv4 rejected for IPv6 family", ip: "203.0.113.1", forceIPv6: true, want: false},
+		{name: "garbage rejected", ip: "not-an-ip", forceIPv6: false, want: false},
+		{name: "empty rejected", ip: "", forceIPv6: false, want: false},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := validIP(tt.ip, tt.recordType); got != tt.want {
-				t.Errorf("validIP(%q, %q) = %v, want %v", tt.ip, tt.recordType, got, tt.want)
-			}
-		})
-	}
-}
-
-func TestStaticIP(t *testing.T) {
-	tests := []struct {
-		name       string
-		staticIP   string
-		recordType string
-		want       string
-		wantErr    bool
-	}{
-		{name: "single IPv4", staticIP: "203.0.113.1", recordType: "A", want: "203.0.113.1"},
-		{name: "dual takes IPv4", staticIP: "203.0.113.1,2001:db8::1", recordType: "A", want: "203.0.113.1"},
-		{name: "dual takes IPv6", staticIP: "203.0.113.1,2001:db8::1", recordType: "AAAA", want: "2001:db8::1"},
-		{name: "single IPv6", staticIP: "2001:db8::1", recordType: "AAAA", want: "2001:db8::1"},
-		{name: "family mismatch", staticIP: "2001:db8::1", recordType: "A", wantErr: true},
-		{name: "garbage", staticIP: "nope", recordType: "A", wantErr: true},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			d := New(tt.staticIP)
-			got, err := d.staticIP(tt.recordType)
-			if tt.wantErr {
-				if err == nil {
-					t.Fatalf("staticIP() error = nil, want error")
-				}
-				return
-			}
-			if err != nil {
-				t.Fatalf("staticIP() error = %v", err)
-			}
-			if got != tt.want {
-				t.Errorf("staticIP() = %q, want %q", got, tt.want)
+			if got := validFamilyIP(tt.ip, tt.forceIPv6); got != tt.want {
+				t.Errorf("validFamilyIP(%q, %v) = %v, want %v", tt.ip, tt.forceIPv6, got, tt.want)
 			}
 		})
 	}
