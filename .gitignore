@@ -1,29 +1,34 @@
-# Ignore everything by default
-*
+# Binary
+/cloudflareddns
+*.exe
 
-# Allow all directories so Git can traverse them
-!*/
+# Local config (contains API tokens)
+/config.json
 
-# Allow .github directory and all its contents
-!.github/
-!.github/**
+# OS
+.DS_Store
+Thumbs.db
 
-# Git configuration
-!.gitignore
+# Editor / IDE
+.vscode/
+.idea/
+.claude/
+*.swp
+*.swo
+*~
 
-# Go source files
-!*.go
+# Go
+*.test
+*.out
+*.prof
+/coverage.txt
 
-# Go module files
-!go.mod
-!go.sum
+# Build artifacts
+/tmp/
+/dist/
 
-# Markdown documentation
-!*.md
+# Logs
+*.log
 
-# JSON files
-!*.example.json
-
-# Dockerfile
-!Dockerfile
-!LICENSE
+# Environment
+.env

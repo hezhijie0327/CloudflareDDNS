@@ -1,19 +1,15 @@
-# Cloudflare DDNS Tool
+# CloudflareDDNS
 
-一个轻量级、高效的 Cloudflare DDNS 更新工具，使用 Go 语言编写。当您的 WAN IP 变化时，自动更新 DNS 记录。
+[![Version](https://img.shields.io/badge/Version-1.6.1-informational)](https://github.com/hezhijie0327/CloudflareDDNS/releases)
+[![License](https://img.shields.io/badge/License-Apache%202.0--Commons%20Clause-blue)](LICENSE)
+[![Go Version](https://img.shields.io/badge/Go-1.25-00ADD8?logo=go)](https://go.dev/)
+[![Lint](https://img.shields.io/badge/golangci--lint-0%20issues-success)](https://golangci-lint.run/)
 
-### 特性
+轻量级、零第三方依赖的 Cloudflare DDNS 更新工具。WAN IP 变化时自动更新 DNS 记录。
 
-- 🚀 **多种 DNS 记录类型**：支持 A（IPv4）、AAAA（IPv6）以及同时更新两种记录
-- 🔄 **自动 IP 检测**：优先通过 DNS（`whoami.cloudflare`）检测 WAN IP，失败时回退到 Cloudflare trace API
-- 🎯 **双操作模式**：创建/更新 DNS 记录或删除记录
-- 🐳 **Docker 支持**：多架构 Docker 镜像（linux/amd64、linux/arm64）
-- ⚡ **快速轻量**：由 Go 编译的单个二进制文件，依赖最少
-- 🔒 **安全**：支持 Cloudflare API Token（推荐）或传统的 X-Auth-Email/X-Auth-Key 认证
+## 快速开始
 
-### 快速开始
-
-#### 使用 Docker
+### 使用 Docker
 
 ```bash
 # 运行容器（默认使用 config.json）
@@ -23,9 +19,12 @@ docker run -v $(pwd)/config.json:/config.json hezhijie0327/cloudflareddns:latest
 docker run -v $(pwd)/myconfig.json:/myconfig.json hezhijie0327/cloudflareddns:latest -config myconfig.json
 ```
 
-#### 使用二进制文件
+### 使用二进制
 
 ```bash
+# 构建
+go build -o cloudflareddns ./cmd/cloudflareddns
+
 # 运行（默认使用 config.json）
 ./cloudflareddns
 
@@ -34,12 +33,18 @@ docker run -v $(pwd)/myconfig.json:/myconfig.json hezhijie0327/cloudflareddns:la
 
 # 生成示例配置文件
 ./cloudflareddns -generate-config > config.json
-
-# 查看版本信息
-./cloudflareddns -version
 ```
 
-### 命令行参数
+## 核心特性
+
+- 🚀 **多种 DNS 记录类型**：支持 A（IPv4）、AAAA（IPv6）以及同时更新两种记录
+- 🔄 **自动 IP 检测**：优先通过 DNS（`whoami.cloudflare` CH TXT 查询，A 记录经 `1.1.1.1`、AAAA 记录经 `2606:4700:4700::1111`）检测 WAN IP，失败时自动回退到 Cloudflare trace API
+- 🎯 **双操作模式**：创建/更新 DNS 记录或删除记录
+- 🧱 **零第三方依赖**：DNS 报文查询/解析为手写实现（`internal/ipdetect/dnsquery.go`），纯标准库构建
+- 🐳 **Docker 支持**：多架构 Docker 镜像（linux/amd64、linux/arm64）
+- 🔒 **安全**：支持 Cloudflare API Token（推荐）或传统的 X-Auth-Email/X-Auth-Key 认证
+
+## 命令行参数
 
 | 参数               | 说明                       | 默认值        |
 | ------------------ | -------------------------- | ------------- |
@@ -48,7 +53,7 @@ docker run -v $(pwd)/myconfig.json:/myconfig.json hezhijie0327/cloudflareddns:la
 | `-version`         | 显示版本信息               | -             |
 | `-h` / `-help`     | 显示帮助信息               | -             |
 
-### 配置说明
+## 配置
 
 在二进制文件所在目录创建 `config.json` 文件，或使用 `-generate-config` 生成示例：
 
@@ -61,26 +66,28 @@ docker run -v $(pwd)/myconfig.json:/myconfig.json hezhijie0327/cloudflareddns:la
   "ttl": 1,
   "ip": "auto",
   "proxy_status": false,
-  "mode": "upsert"
+  "mode": "upsert",
+  "update_interval": 300
 }
 ```
 
-#### 配置选项
+### 配置选项
 
-| 字段           | 类型   | 必填 | 说明                                                                |
-| -------------- | ------ | ---- | ------------------------------------------------------------------- |
-| `api_token`    | string | ✅   | 您的 Cloudflare API Token（推荐）                                   |
-| `x_auth_email` | string | ❌   | ~~您的 Cloudflare 账户邮箱~~（已弃用，请使用 api_token）            |
-| `x_auth_key`   | string | ❌   | ~~您的 Cloudflare API 密钥~~（已弃用，请使用 api_token）            |
-| `zone_name`    | string | ✅   | 您的域名（如 `example.com`）                                        |
-| `record_name`  | string | ✅   | 完整的 DNS 记录名称（如 `ddns.example.com`）                        |
-| `type`         | string | ❌   | 记录类型：`A`、`AAAA` 或 `A_AAAA`（默认：`A`）                      |
-| `ttl`          | int    | ❌   | TTL 值：`1`（自动）或 `120`-`86400` 秒（默认：`1`）                 |
-| `ip`           | string | ❌   | IP 地址：`auto`（自动检测）、静态 IP 或 `ipv4,ipv6`（默认：`auto`） |
-| `proxy_status` | bool   | ❌   | 启用 Cloudflare 代理：`true` 或 `false`（默认：`false`）            |
-| `mode`         | string | ❌   | 操作模式：`upsert`（创建/更新）或 `delete`（默认：`upsert`）        |
+| 字段             | 类型   | 必填 | 说明                                                                  |
+| ---------------- | ------ | ---- | --------------------------------------------------------------------- |
+| `api_token`      | string | ✅   | 您的 Cloudflare API Token（推荐）                                     |
+| `x_auth_email`   | string | ❌   | ~~您的 Cloudflare 账户邮箱~~（已弃用，请使用 api_token）              |
+| `x_auth_key`     | string | ❌   | ~~您的 Cloudflare API 密钥~~（已弃用，请使用 api_token）              |
+| `zone_name`      | string | ✅   | 您的域名（如 `example.com`）                                          |
+| `record_name`    | string | ✅   | 完整的 DNS 记录名称（如 `ddns.example.com`）                          |
+| `type`           | string | ❌   | 记录类型：`A`、`AAAA` 或 `A_AAAA`（默认：`A`）                       |
+| `ttl`            | int    | ❌   | TTL 值：`1`（自动）或 `120`-`86400` 秒（默认：`1`）                   |
+| `ip`             | string | ❌   | IP 地址：`auto`（自动检测）、静态 IP 或 `ipv4,ipv6`（默认：`auto`）   |
+| `proxy_status`   | bool   | ❌   | 启用 Cloudflare 代理：`true` 或 `false`（默认：`false`）              |
+| `mode`           | string | ❌   | 操作模式：`upsert`（创建/更新）或 `delete`（默认：`upsert`）          |
+| `update_interval`| int    | ❌   | 更新间隔秒数（默认：`300`，`0` 表示只运行一次）                       |
 
-#### 有效的 TTL 值
+### 有效的 TTL 值
 
 - `1` - 自动（Cloudflare 自动优化）
 - `120` - 2 分钟
@@ -94,20 +101,20 @@ docker run -v $(pwd)/myconfig.json:/myconfig.json hezhijie0327/cloudflareddns:la
 - `43200` - 12 小时
 - `86400` - 24 小时
 
-#### 记录类型
+### 记录类型
 
 - **A** - IPv4 地址记录
 - **AAAA** - IPv6 地址记录
 - **A_AAAA** - 同时创建 A 和 AAAA 记录
 
-#### 操作模式
+### 操作模式
 
 - **upsert** - 如果 DNS 记录不存在则创建，如果存在则更新
 - **delete** - 删除 DNS 记录
 
-#### IP 配置
+### IP 配置
 
-- **auto** - 自动检测您的 WAN IP（推荐）。优先通过 DNS 查询 `whoami.cloudflare` 的 TXT 记录（A 记录经 IPv4 DNS 服务器 `1.1.1.1`，AAAA 记录经 IPv6 DNS 服务器 `2606:4700:4700::1111`），DNS 检测失败时回退到 Cloudflare trace API
+- **auto** - 自动检测您的 WAN IP（推荐）。优先通过 DNS 查询 `whoami.cloudflare` 的 TXT 记录，DNS 检测失败时回退到 Cloudflare trace API
 - **static** - 使用指定的 IP 地址（如 `"192.168.1.1"`）
 - **dual** - 同时指定 IPv4 和 IPv6（如 `"192.168.1.1,2001:db8::1"`）
 
@@ -169,28 +176,19 @@ docker run -v $(pwd)/myconfig.json:/myconfig.json hezhijie0327/cloudflareddns:la
 }
 ```
 
-### 开发
+## 项目结构
 
-#### 代码检查
-
-```bash
-# 运行 linter
-golangci-lint run
-
-# 格式化代码
-golangci-lint fmt
+```
+cloudflareddns/
+├── cmd/cloudflareddns/   ← 二进制入口（CLI 参数、更新循环、版本信息）
+├── config/               ← 配置加载、默认值、校验、示例生成
+├── cloudflare/           ← Cloudflare API v4 客户端（zone、DNS 记录 CRUD）
+├── ddns/                 ← upsert/delete 编排（API 客户端 + IP 检测）
+├── internal/ipdetect/    ← WAN IP 检测（手写 DNS 查询 + HTTP trace 回退）
+└── scripts/              ← pre-commit hook 安装、版本 bump
 ```
 
-#### 编译
-
-```bash
-go build \
-  -ldflags="-X main.CommitHash=$(git rev-parse --short HEAD) \
-            -X main.BuildTime=$(date -u +%Y-%m-%dT%H:%M:%S) \
-  -o cloudflareddns main.go
-```
-
-### 获取 Cloudflare API 凭证
+## 获取 Cloudflare API 凭证
 
 #### 方式一：使用 API Token（推荐）
 
@@ -214,10 +212,10 @@ go build \
 
 ⚠️ **注意**：为了安全起见，推荐使用 API Token 方式。全局 API 密钥拥有账户的完全访问权限，风险较高。
 
-### 输出示例
+## 输出示例
 
 ```
-🚀 Cloudflare DDNS Tool v1.6.0
+🚀 Cloudflare DDNS Tool v1.6.1 (go1.26.5)
 
 🌐 Zone ID: abc123def456
 
@@ -227,6 +225,44 @@ go build \
 ✅ Successfully created A record
 ```
 
-### 许可证
+## 开发
 
-本项目采用 [Apache License 2.0 with Commons Clause v1.0](LICENSE) 许可证。
+### 代码检查
+
+```bash
+# 运行 linter（提交前必须零警告）
+go fix ./... && golangci-lint run
+
+# 格式化代码（gofumpt）
+golangci-lint fmt
+```
+
+### 测试
+
+```bash
+go test ./...
+```
+
+### 编译
+
+```bash
+go build \
+  -ldflags="-X main.CommitHash=$(git rev-parse --short HEAD) \
+            -X main.BuildTime=$(date -u +%Y-%m-%dT%H:%M:%S)" \
+  -o cloudflareddns ./cmd/cloudflareddns
+```
+
+### 开发辅助脚本
+
+```bash
+# 安装 pre-commit hook（提交前自动格式化 + lint）
+sh scripts/install-hook.sh        # Linux / macOS
+pwsh scripts/install-hook.ps1     # Windows
+
+# 版本号 bump（patch/minor/major，语义见 CLAUDE.md）
+sh scripts/bump-version.sh patch
+```
+
+## License
+
+[Apache License 2.0 with Commons Clause v1.0](LICENSE)
