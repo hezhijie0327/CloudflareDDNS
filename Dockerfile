@@ -4,7 +4,7 @@ FROM golang:${GOLANG_VERSION} AS build_cloudflareddns
 
 WORKDIR /cloudflareddns
 
-ADD ./* /cloudflareddns
+ADD . /cloudflareddns
 
 ENV \
     CGO_ENABLED="0"

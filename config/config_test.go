@@ -9,9 +9,6 @@ import (
 	"testing"
 )
 
-// intPtr returns a pointer to n for UpdateInterval fields in test tables.
-func intPtr(n int) *int { return &n }
-
 func TestSetDefaults(t *testing.T) {
 	tests := []struct {
 		name string
@@ -21,12 +18,12 @@ func TestSetDefaults(t *testing.T) {
 		{
 			name: "empty config",
 			in:   Config{},
-			want: Config{Mode: "upsert", Type: "A", TTL: 1, IP: "auto", UpdateInterval: intPtr(defaultUpdateIntervalSeconds)},
+			want: Config{Mode: "upsert", Type: "A", TTL: 1, IP: "auto", UpdateInterval: new(defaultUpdateIntervalSeconds)},
 		},
 		{
 			name: "explicit values preserved",
-			in:   Config{Mode: "delete", Type: "AAAA", TTL: 300, IP: "192.0.2.1", UpdateInterval: intPtr(0)},
-			want: Config{Mode: "delete", Type: "AAAA", TTL: 300, IP: "192.0.2.1", UpdateInterval: intPtr(0)},
+			in:   Config{Mode: "delete", Type: "AAAA", TTL: 300, IP: "192.0.2.1", UpdateInterval: new(0)},
+			want: Config{Mode: "delete", Type: "AAAA", TTL: 300, IP: "192.0.2.1", UpdateInterval: new(0)},
 		},
 	}
 
@@ -47,7 +44,7 @@ func TestInterval(t *testing.T) {
 		t.Errorf("Interval() with nil pointer = %d, want %d", got, defaultUpdateIntervalSeconds)
 	}
 
-	cfg = Config{UpdateInterval: intPtr(0)}
+	cfg = Config{UpdateInterval: new(0)}
 	if got := cfg.Interval(); got != 0 {
 		t.Errorf("Interval() with explicit 0 = %d, want 0", got)
 	}
@@ -185,7 +182,7 @@ func TestExample(t *testing.T) {
 		TTL:            1,
 		IP:             "auto",
 		Mode:           "upsert",
-		UpdateInterval: intPtr(defaultUpdateIntervalSeconds),
+		UpdateInterval: new(defaultUpdateIntervalSeconds),
 	}
 	if !reflect.DeepEqual(cfg, want) {
 		t.Errorf("Example() = %+v, want %+v", cfg, want)
