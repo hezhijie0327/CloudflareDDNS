@@ -14,12 +14,12 @@ import (
 	"zjddns/internal/log"
 )
 
-// Client is an HTTP client for the Cloudflare API v4, bound to a
-// configured zone.
+// Client is an HTTP client for the Cloudflare API v4, bound to a single
+// configured section (one zone/record pair).
 type Client struct {
 	httpClient *http.Client
 	baseURL    string
-	cfg        *config.Config
+	section    *config.CloudflareConfig
 	zoneID     string
 }
 
@@ -53,19 +53,19 @@ var (
 )
 
 // New resolves the Zone ID and returns a Client bound to the given
-// configuration.
-func New(cfg *config.Config) (*Client, error) {
+// section.
+func New(section *config.CloudflareConfig) (*Client, error) {
 	c := &Client{
 		httpClient: &http.Client{Timeout: requestTimeout},
 		baseURL:    defaultAPIBase,
-		cfg:        cfg,
+		section:    section,
 	}
 
 	zoneID, err := c.ZoneID()
 	if err != nil {
 		return nil, fmt.Errorf("get zone ID: %w", err)
 	}
-	log.Infof("CLOUDFLARE: Zone ID: %s", zoneID)
+	log.Debugf("CLOUDFLARE: Zone %s: ID %s", section.ZoneName, zoneID)
 	c.zoneID = zoneID
 
 	return c, nil
@@ -91,7 +91,7 @@ func (c *Client) request(method, path string, payload any) (*response, error) {
 	}
 
 	// Bearer token authentication.
-	req.Header.Set("Authorization", "Bearer "+c.cfg.Cloudflare.APIToken)
+	req.Header.Set("Authorization", "Bearer "+c.section.APIToken)
 	req.Header.Set("Content-Type", "application/json")
 
 	resp, err := c.httpClient.Do(req)

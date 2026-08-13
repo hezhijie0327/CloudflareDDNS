@@ -51,6 +51,7 @@ func main() {
 		log.Errorf("CONFIG: Failed to load config: %v", err)
 		return
 	}
+	log.Infof("CONFIG: Loaded config: %s", *configPath)
 
 	// Apply the defaults.
 	cfg.SetDefaults()
@@ -84,6 +85,7 @@ func main() {
 
 	// An interval of 0 means run once.
 	if updateInterval <= 0 {
+		log.Infof("DDNS: Single run")
 		runUpdate()
 		return
 	}
@@ -93,13 +95,13 @@ func main() {
 	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
 
-	log.Infof("DDNS: Running every %d seconds. Press Ctrl+C to stop.", updateInterval)
+	log.Infof("DDNS: Scheduler started: every %ds (Ctrl+C to stop)", updateInterval)
 
 	// Run immediately, then on every tick.
 	runUpdate()
 
 	for range ticker.C {
-		log.Infof("DDNS: %s - Starting scheduled update...", time.Now().Format(time.DateTime))
+		log.Debugf("DDNS: %s - Starting scheduled update...", time.Now().Format(time.DateTime))
 		runUpdate()
 	}
 }

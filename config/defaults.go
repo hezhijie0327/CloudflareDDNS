@@ -38,8 +38,8 @@ func (c *Config) SetDefaults() {
 		*c.UpdateInterval = defaultUpdateIntervalSeconds
 	}
 	// Per-provider section defaults.
-	if c.Cloudflare != nil {
-		c.Cloudflare.setDefaults()
+	for i := range c.Cloudflare {
+		c.Cloudflare[i].setDefaults()
 	}
 }
 

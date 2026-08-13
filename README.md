@@ -15,7 +15,7 @@
 [![Go Version](https://img.shields.io/badge/Go-1.26-00ADD8?logo=go)](https://go.dev/)
 [![Lint](https://img.shields.io/badge/golangci--lint-0%20issues-success)](https://golangci-lint.run/)
 
-轻量级、零第三方依赖的 Cloudflare DDNS 更新工具。WAN IP 变化时自动更新 DNS 记录。
+轻量级、零第三方依赖的 DDNS 更新工具。WAN IP 变化时自动更新 DNS 记录。
 
 ## 快速开始
 
@@ -48,12 +48,11 @@ go build -o zjddns ./cmd/zjddns
 ## 核心特性
 
 - 🚀 **多种 DNS 记录类型**：支持 A（IPv4）、AAAA（IPv6）以及同时更新两种记录
-- 🔄 **自动 IP 检测**：优先通过 DNS（`whoami.cloudflare` CH TXT 查询，A 记录经 `1.1.1.1`、AAAA 记录经 `2606:4700:4700::1111`）检测 WAN IP，失败时自动回退到 Cloudflare trace API
+- 🔄 **自动 IP 检测**：DNS 查询优先，失败自动回退 HTTP trace
 - 🎯 **双操作模式**：创建/更新 DNS 记录或删除记录
-- 🧱 **零第三方依赖**：DNS 报文查询/解析为手写实现（`internal/ipdetect/dnsquery.go`），纯标准库构建
+- 🧱 **零第三方依赖**：纯标准库构建，DNS 报文查询/解析为手写实现
 - 🐳 **Docker 支持**：多架构 Docker 镜像（linux/amd64、linux/arm64）
-- 🔒 **安全**：使用 Cloudflare API Token 认证
-- 🔌 **Provider 机制**：每个提供商一个配置子段，**可同时配置多个**（各更新各的域）；Cloudflare 为内置实现，新提供商以插件包形式接入（`providers/`）
+- 🔌 **Provider 机制**：每个提供商一个配置段，**同一提供商可配多个域名、多个提供商可并存**；新提供商以插件包形式接入（`providers/`）
 
 ## 命令行参数
 
@@ -66,24 +65,24 @@ go build -o zjddns ./cmd/zjddns
 
 ## 配置
 
-在二进制文件所在目录创建 `config.json` 文件，或使用 `-generate-config` 生成示例。
-
-**可同时配置多个提供商**——每个提供商一个子段，各更新各自的记录（如 Cloudflare 更新 `ddns.example.com`、阿里云更新 `ddns.example.net`）。公用的检测与调度设置放在顶层。
+在二进制文件所在目录创建 `config.json` 文件，或使用 `-generate-config` 生成示例：
 
 ```json
 {
   "ip": "auto",
   "update_interval": 300,
   "log_level": "info",
-  "cloudflare": {
-    "api_token": "your_cloudflare_api_token",
-    "zone_name": "example.com",
-    "record_name": "ddns.example.com",
-    "mode": "upsert",
-    "type": "A_AAAA",
-    "ttl": 1,
-    "proxy_status": false
-  }
+  "cloudflare": [
+    {
+      "api_token": "your_cloudflare_api_token",
+      "zone_name": "example.com",
+      "record_name": "ddns.example.com",
+      "mode": "upsert",
+      "type": "A_AAAA",
+      "ttl": 1,
+      "proxy_status": false
+    }
+  ]
 }
 ```
 
@@ -95,31 +94,9 @@ go build -o zjddns ./cmd/zjddns
 | `update_interval`| int    | ❌   | 更新间隔秒数（默认：`300`，`0` 表示只运行一次）                       |
 | `log_level`      | string | ❌   | 日志级别：`error`/`warn`/`info`/`debug`，支持 `debug:CLOUDFLARE,IPDETECT` 组件过滤（默认：`info`） |
 
-### Cloudflare 提供商配置（`"cloudflare"` 段）
+### 提供商配置
 
-| 字段           | 类型   | 必填 | 说明                                                                 |
-| -------------- | ------ | ---- | -------------------------------------------------------------------- |
-| `api_token`    | string | ✅   | 您的 Cloudflare API Token                                           |
-| `zone_name`    | string | ✅   | 您的域名（如 `example.com`）                                         |
-| `record_name`  | string | ✅   | 完整的 DNS 记录名称（如 `ddns.example.com`）                         |
-| `mode`         | string | ❌   | 操作模式：`upsert`（创建/更新）或 `delete`（默认：`upsert`，每个提供商独立配置） |
-| `type`         | string | ❌   | 记录类型：`A`、`AAAA` 或 `A_AAAA`（默认：`A`，每个提供商独立配置）   |
-| `ttl`          | int    | ❌   | TTL 值：`1`（自动）或 `120`-`86400` 秒（默认：`1`）                  |
-| `proxy_status` | bool   | ❌   | 启用 Cloudflare 代理：`true` 或 `false`（默认：`false`）             |
-
-### 有效的 TTL 值
-
-- `1` - 自动（Cloudflare 自动优化）
-- `120` - 2 分钟
-- `300` - 5 分钟
-- `600` - 10 分钟
-- `900` - 15 分钟
-- `1800` - 30 分钟
-- `3600` - 1 小时
-- `7200` - 2 小时
-- `18000` - 5 小时
-- `43200` - 12 小时
-- `86400` - 24 小时
+- **Cloudflare**：配置字段、TTL 规则、使用示例与 API 凭证申请见 [docs/providers/cloudflare.md](docs/providers/cloudflare.md)
 
 ### 记录类型
 
@@ -134,75 +111,9 @@ go build -o zjddns ./cmd/zjddns
 
 ### IP 配置
 
-- **auto** - 自动检测您的 WAN IP（推荐）。优先通过 DNS 查询 `whoami.cloudflare` 的 TXT 记录，DNS 检测失败时回退到 Cloudflare trace API
+- **auto** - 自动检测您的 WAN IP（推荐）
 - **static** - 使用指定的 IP 地址（如 `"192.168.1.1"`）
 - **dual** - 同时指定 IPv4 和 IPv6（如 `"192.168.1.1,2001:db8::1"`）
-
-### 使用示例
-
-#### 更新 IPv4 A 记录
-
-```json
-{
-  "ip": "auto",
-  "cloudflare": {
-    "api_token": "your_cloudflare_api_token",
-    "zone_name": "example.com",
-    "record_name": "home.example.com",
-    "mode": "upsert",
-    "type": "A",
-    "ttl": 1,
-    "proxy_status": false
-  }
-}
-```
-
-#### 同时更新 IPv4 和 IPv6
-
-```json
-{
-  "ip": "auto",
-  "cloudflare": {
-    "api_token": "your_cloudflare_api_token",
-    "zone_name": "example.com",
-    "record_name": "home.example.com",
-    "mode": "upsert",
-    "type": "A_AAAA",
-    "ttl": 300,
-    "proxy_status": true
-  }
-}
-```
-
-#### 使用静态 IP 地址
-
-```json
-{
-  "ip": "192.168.1.100",
-  "cloudflare": {
-    "api_token": "your_cloudflare_api_token",
-    "zone_name": "example.com",
-    "record_name": "server.example.com",
-    "mode": "upsert",
-    "type": "A",
-    "ttl": 600,
-    "proxy_status": false
-  }
-}
-```
-
-#### 删除 DNS 记录
-
-```json
-{
-  "cloudflare": {
-    "api_token": "your_cloudflare_api_token",
-    "zone_name": "example.com",
-    "record_name": "old.example.com",
-    "mode": "delete"
-  }
-}
-```
 
 ## 项目结构
 
@@ -210,46 +121,11 @@ go build -o zjddns ./cmd/zjddns
 zjddns/
 ├── cmd/zjddns/             ← 二进制入口（CLI 参数、banner、更新循环、版本信息）
 ├── config/                 ← 配置加载、默认值、校验、示例生成
-├── providers/              ← DDNS Provider 构造（每个配置子段一个实例，可并存）
+├── providers/              ← DDNS Provider 构造（每个配置段一个实例，可并存）
 │   └── cloudflare/         ← Cloudflare API v4 客户端（zone、DNS 记录 CRUD）
 ├── ddns/                   ← Provider 接口 + upsert/delete 编排（IP 检测接线）
 ├── internal/ipdetect/      ← WAN IP 检测（手写 DNS 查询 + HTTP trace 回退）
 └── scripts/                ← pre-commit hook 安装、版本 bump
-```
-
-## 获取 Cloudflare API 凭证
-
-1. 登录您的 [Cloudflare 控制台](https://dash.cloudflare.com/)
-2. 前往 **我的个人资料** → **API 令牌**
-3. 点击 **创建令牌**
-4. 在创建 API Token 时，需要配置以下权限：
-   - **区域** → **区域设置** → **编辑**
-   - **区域** → **区域** → **编辑**
-   - **区域** → **DNS** → **编辑**
-5. 可以选择 **区域资源** 来限制 Token 只能访问特定域名
-6. 创建后，复制 Token 并填写到配置文件的 `api_token` 字段
-
-
-## 输出示例
-
-```
-███████╗     ██╗██████╗ ██████╗ ███╗   ██╗███████╗
-╚══███╔╝     ██║██╔══██╗██╔══██╗████╗  ██║██╔════╝
-  ███╔╝      ██║██║  ██║██║  ██║██╔██╗ ██║███████╗
- ███╔╝  ██   ██║██║  ██║██║  ██║██║╚██╗██║╚════██║
-███████╗╚█████╔╝██████╔╝██████╔╝██║ ╚████║███████║
-╚══════╝ ╚════╝ ╚═════╝ ╚═════╝ ╚═╝  ╚═══╝╚══════╝
-  v2.0.0 (go1.26.5)
-
-  Lightweight zero-dependency DDNS updater
-  https://github.com/hezhijie0327/ZJDDNS
-__________________________________\o/_______
-
-[2026-08-13 16:00:00] CLOUDFLARE: Zone ID: abc123def456
-[2026-08-13 16:00:00] DDNS: Checking A record...
-[2026-08-13 16:00:00] DDNS: WAN IP: 203.0.113.1
-[2026-08-13 16:00:00] CLOUDFLARE: Record does not exist, creating...
-[2026-08-13 16:00:00] CLOUDFLARE: Successfully created A record
 ```
 
 ## 开发

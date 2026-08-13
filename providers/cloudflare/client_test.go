@@ -8,19 +8,18 @@ import (
 	"strings"
 	"testing"
 	"zjddns/config"
+	"zjddns/internal/ipdetect"
 )
 
-// testCfg returns a fully populated Cloudflare config section.
-func testCfg() *config.Config {
-	return &config.Config{
-		Cloudflare: &config.CloudflareConfig{
-			APIToken:   "test-token",
-			ZoneName:   "example.com",
-			RecordName: "ddns.example.com",
-			Mode:       config.ModeUpsert,
-			Type:       config.TypeA,
-			TTL:        1,
-		},
+// testSection returns a fully populated Cloudflare config section.
+func testSection() *config.CloudflareConfig {
+	return &config.CloudflareConfig{
+		APIToken:   "test-token",
+		ZoneName:   "example.com",
+		RecordName: "ddns.example.com",
+		Mode:       config.ModeUpsert,
+		Type:       config.TypeA,
+		TTL:        1,
 	}
 }
 
@@ -34,7 +33,7 @@ func newTestClient(t *testing.T, handler http.HandlerFunc) *Client {
 	return &Client{
 		httpClient: server.Client(),
 		baseURL:    server.URL,
-		cfg:        testCfg(),
+		section:    testSection(),
 		zoneID:     "zone-1",
 	}
 }
@@ -206,7 +205,7 @@ func TestUpsert(t *testing.T) {
 			}
 		})
 
-		if err := client.Upsert("A", ip); err != nil {
+		if err := client.Upsert("A", ipdetect.IP{Value: ip, Source: "DNS"}); err != nil {
 			t.Fatalf("Upsert() error = %v", err)
 		}
 		if !posted {
@@ -239,7 +238,7 @@ func TestUpsert(t *testing.T) {
 			}
 		})
 
-		if err := client.Upsert("A", ip); err != nil {
+		if err := client.Upsert("A", ipdetect.IP{Value: ip, Source: "DNS"}); err != nil {
 			t.Fatalf("Upsert() error = %v", err)
 		}
 		if !updated {
@@ -261,7 +260,7 @@ func TestUpsert(t *testing.T) {
 			}
 		})
 
-		if err := client.Upsert("A", ip); err != nil {
+		if err := client.Upsert("A", ipdetect.IP{Value: ip, Source: "DNS"}); err != nil {
 			t.Fatalf("Upsert() error = %v", err)
 		}
 	})

@@ -2,12 +2,14 @@
   "ip": "auto",
   "update_interval": 300,
   "log_level": "info",
-  "cloudflare": {
-    "api_token": "your-cloudflare-api-token",
-    "zone_name": "example.com",
-    "record_name": "ddns.example.com",
-    "mode": "upsert",
-    "type": "A_AAAA",
-    "ttl": 1
-  }
+  "cloudflare": [
+    {
+      "api_token": "your-cloudflare-api-token",
+      "zone_name": "example.com",
+      "record_name": "ddns.example.com",
+      "mode": "upsert",
+      "type": "A_AAAA",
+      "ttl": 1
+    }
+  ]
 }

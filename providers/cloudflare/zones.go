@@ -14,7 +14,7 @@ type zone struct {
 
 // ZoneID returns the ID of the configured zone.
 func (c *Client) ZoneID() (string, error) {
-	resp, err := c.request(http.MethodGet, "/client/v4/zones?name="+c.cfg.Cloudflare.ZoneName, nil)
+	resp, err := c.request(http.MethodGet, "/client/v4/zones?name="+c.section.ZoneName, nil)
 	if err != nil {
 		return "", err
 	}

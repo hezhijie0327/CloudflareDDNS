@@ -19,6 +19,12 @@ import (
 	"zjddns/internal/log"
 )
 
+// IP carries a WAN IP together with the method that produced it.
+type IP struct {
+	Value  string // the address
+	Source string // "DNS" or "HTTP"
+}
+
 // Detector resolves the public WAN IPv4 and IPv6 addresses.
 type Detector struct{}
 
@@ -36,25 +42,30 @@ const (
 )
 
 // IPv4 returns the detected public WAN IPv4 address.
-func (d *Detector) IPv4() (string, error) { return d.detect(false) }
+func (d *Detector) IPv4() (IP, error) { return d.detect(false) }
 
 // IPv6 returns the detected public WAN IPv6 address.
-func (d *Detector) IPv6() (string, error) { return d.detect(true) }
+func (d *Detector) IPv6() (IP, error) { return d.detect(true) }
 
 // detect runs DNS-first detection with the HTTP trace fallback.
-func (d *Detector) detect(forceIPv6 bool) (string, error) {
+func (d *Detector) detect(forceIPv6 bool) (IP, error) {
 	if ip, err := d.detectViaDNS(forceIPv6); err == nil {
+		log.Debugf("IPDETECT: Detected via DNS: %s", ip.Value)
 		return ip, nil
 	} else {
 		log.Warnf("IPDETECT: DNS detection failed (%v), falling back to HTTP", err)
 	}
 
-	return d.detectViaTrace(forceIPv6)
+	ip, err := d.detectViaTrace(forceIPv6)
+	if err == nil {
+		log.Debugf("IPDETECT: Detected via HTTP: %s", ip.Value)
+	}
+	return ip, err
 }
 
 // detectViaDNS queries the family-forced Cloudflare DNS server for the
 // whoami CH TXT record and validates the answer against the family.
-func (d *Detector) detectViaDNS(forceIPv6 bool) (string, error) {
+func (d *Detector) detectViaDNS(forceIPv6 bool) (IP, error) {
 	dnsServer := dns4Server
 	if forceIPv6 {
 		dnsServer = dns6Server
@@ -62,19 +73,19 @@ func (d *Detector) detectViaDNS(forceIPv6 bool) (string, error) {
 
 	txt, err := dnsQueryTXT(dnsServer, whoamiDomain)
 	if err != nil {
-		return "", err
+		return IP{}, err
 	}
 
 	if !validFamilyIP(txt, forceIPv6) {
-		return "", fmt.Errorf("invalid IP from DNS: %s", txt)
+		return IP{}, fmt.Errorf("invalid IP from DNS: %s", txt)
 	}
 
-	return txt, nil
+	return IP{Value: txt, Source: "DNS"}, nil
 }
 
 // detectViaTrace queries the Cloudflare trace endpoint with the dialer
 // forced to the requested address family.
-func (d *Detector) detectViaTrace(forceIPv6 bool) (string, error) {
+func (d *Detector) detectViaTrace(forceIPv6 bool) (IP, error) {
 	networkType := "tcp4"
 	if forceIPv6 {
 		networkType = "tcp6"
@@ -97,7 +108,7 @@ func (d *Detector) detectViaTrace(forceIPv6 bool) (string, error) {
 
 	resp, err := client.Get(traceURL) //nolint:gosec // fixed Cloudflare endpoint, not user input
 	if err != nil {
-		return "", err
+		return IP{}, err
 	}
 	defer func() {
 		_ = resp.Body.Close()
@@ -105,18 +116,18 @@ func (d *Detector) detectViaTrace(forceIPv6 bool) (string, error) {
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return "", err
+		return IP{}, err
 	}
 
 	for line := range strings.SplitSeq(string(body), "\n") {
 		if ip, found := strings.CutPrefix(line, "ip="); found {
 			if validFamilyIP(ip, forceIPv6) {
-				return ip, nil
+				return IP{Value: ip, Source: "HTTP"}, nil
 			}
 		}
 	}
 
-	return "", errors.New("no valid IP found")
+	return IP{}, errors.New("no valid IP found")
 }
 
 // validFamilyIP reports whether ip parses and matches the requested

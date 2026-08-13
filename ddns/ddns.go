@@ -48,9 +48,13 @@ func (r *Runner) Run() {
 
 // resolveIP returns the IP to publish for the given record type: the
 // static setting when configured, otherwise WAN detection.
-func (r *Runner) resolveIP(recordType string) (string, error) {
+func (r *Runner) resolveIP(recordType string) (ipdetect.IP, error) {
 	if r.cfg.IP != config.DefaultIP {
-		return staticIP(r.cfg.IP, recordType)
+		ip, err := staticIP(r.cfg.IP, recordType)
+		if err == nil {
+			log.Debugf("DDNS: Using static IP: %s", ip.Value)
+		}
+		return ip, err
 	}
 
 	if recordType == config.TypeAAAA {
@@ -61,22 +65,22 @@ func (r *Runner) resolveIP(recordType string) (string, error) {
 
 // staticIP resolves the static IP setting for the given record type;
 // the "ipv4,ipv6" dual form splits per address family.
-func staticIP(setting, recordType string) (string, error) {
-	ip := setting
+func staticIP(setting, recordType string) (ipdetect.IP, error) {
+	value := setting
 	if before, after, found := strings.Cut(setting, ","); found {
-		ip = before
+		value = before
 		if recordType == config.TypeAAAA {
-			ip = after
+			value = after
 		}
 	}
 
-	parsed := net.ParseIP(ip)
+	parsed := net.ParseIP(value)
 	isIPv4 := parsed != nil && parsed.To4() != nil
 	if (recordType == config.TypeA && !isIPv4) || (recordType == config.TypeAAAA && isIPv4) {
-		return "", fmt.Errorf("invalid static IP %q for %s record", ip, recordType)
+		return ipdetect.IP{}, fmt.Errorf("invalid static IP %q for %s record", value, recordType)
 	}
 
-	return ip, nil
+	return ipdetect.IP{Value: value, Source: "static"}, nil
 }
 
 // unionTypes collects the record types of the given providers, deduped
@@ -102,14 +106,13 @@ func (r *Runner) upsert(providers []Provider) {
 	}
 
 	for _, recordType := range r.unionTypes(providers) {
-		log.Infof("DDNS: Checking %s record...", recordType)
+		log.Debugf("DDNS: Checking %s record...", recordType)
 
 		ip, err := r.resolveIP(recordType)
 		if err != nil {
-			log.Errorf("DDNS: Failed to get WAN IP: %v", err)
+			log.Errorf("DDNS: Failed to get WAN IP for %s record: %v", recordType, err)
 			continue
 		}
-		log.Infof("DDNS: WAN IP: %s", ip)
 
 		for _, p := range providers {
 			if slices.Contains(p.Types(), recordType) {
@@ -124,7 +127,7 @@ func (r *Runner) upsert(providers []Provider) {
 func (r *Runner) delete(providers []Provider) {
 	for _, p := range providers {
 		for _, recordType := range p.Types() {
-			log.Infof("DDNS: Deleting %s record...", recordType)
+			log.Debugf("DDNS: Deleting %s record...", recordType)
 
 			_ = p.Delete(recordType)
 		}

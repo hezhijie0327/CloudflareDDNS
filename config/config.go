@@ -1,10 +1,10 @@
 // Package config loads and validates the ZJDDNS configuration.
 //
 // The top level holds provider-agnostic settings (IP resolution, update
-// scheduling, logging); each provider owns a nested section (e.g.
-// "cloudflare": {...}). Multiple provider sections may be configured at
-// once — every configured section runs concurrently and updates its own
-// records.
+// scheduling, logging); each provider owns a nested section array (e.g.
+// "cloudflare": [...]). Multiple sections — of the same or different
+// providers — may be configured at once; every configured section runs
+// concurrently and updates its own records.
 package config
 
 import (
@@ -15,10 +15,12 @@ import (
 
 // Config is the top-level configuration structure.
 type Config struct {
-	IP             string            `json:"ip,omitempty"`              // "auto" or a static IP or "ipv4,ipv6" (default: auto)
-	UpdateInterval *int              `json:"update_interval,omitempty"` // Update interval in seconds (nil/default: 300, 0: run once)
-	LogLevel       string            `json:"log_level,omitempty"`       // e.g. "info" or "debug:CLOUDFLARE,IPDETECT" (default: info)
-	Cloudflare     *CloudflareConfig `json:"cloudflare,omitempty"`
+	IP             string `json:"ip,omitempty"`              // "auto" or a static IP or "ipv4,ipv6" (default: auto)
+	UpdateInterval *int   `json:"update_interval,omitempty"` // Update interval in seconds (nil/default: 300, 0: run once)
+	LogLevel       string `json:"log_level,omitempty"`       // e.g. "info" or "debug:CLOUDFLARE,IPDETECT" (default: info)
+	// Cloudflare holds one entry per configured zone/record; the same
+	// provider may be configured multiple times for different domains.
+	Cloudflare []CloudflareConfig `json:"cloudflare,omitempty"`
 }
 
 // Load reads and parses the JSON config file at path.

@@ -8,13 +8,15 @@ func Example() (string, error) {
 		IP:             DefaultIP,
 		UpdateInterval: new(int),
 		LogLevel:       DefaultLogLevel,
-		Cloudflare: &CloudflareConfig{
-			APIToken:   "your-cloudflare-api-token",
-			ZoneName:   "example.com",
-			RecordName: "ddns.example.com",
-			Mode:       ModeUpsert,
-			Type:       TypeAAndAAAA,
-			TTL:        1,
+		Cloudflare: []CloudflareConfig{
+			{
+				APIToken:   "your-cloudflare-api-token",
+				ZoneName:   "example.com",
+				RecordName: "ddns.example.com",
+				Mode:       ModeUpsert,
+				Type:       TypeAAndAAAA,
+				TTL:        1,
+			},
 		},
 	}
 	*cfg.UpdateInterval = defaultUpdateIntervalSeconds

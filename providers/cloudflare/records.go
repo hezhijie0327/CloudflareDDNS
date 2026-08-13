@@ -28,7 +28,7 @@ type dnsRecord struct {
 // RecordID returns the ID of the DNS record matching the configured name
 // and type, or "" when the record does not exist.
 func (c *Client) RecordID(zoneID, recordType string) (string, error) {
-	resp, err := c.request(http.MethodGet, fmt.Sprintf("/client/v4/zones/%s/dns_records?name=%s&type=%s", zoneID, c.cfg.Cloudflare.RecordName, recordType), nil)
+	resp, err := c.request(http.MethodGet, fmt.Sprintf("/client/v4/zones/%s/dns_records?name=%s&type=%s", zoneID, c.section.RecordName, recordType), nil)
 	if err != nil {
 		return "", err
 	}

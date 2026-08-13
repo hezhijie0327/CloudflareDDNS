@@ -4,12 +4,13 @@ import (
 	"reflect"
 	"testing"
 	"zjddns/config"
+	"zjddns/internal/ipdetect"
 )
 
 // upsertCall records the arguments of one Upsert call.
 type upsertCall struct {
 	recordType string
-	ip         string
+	ip         ipdetect.IP
 }
 
 // stubProvider records its calls without touching the network.
@@ -24,7 +25,7 @@ func (p *stubProvider) Mode() string { return p.mode }
 
 func (p *stubProvider) Types() []string { return p.types }
 
-func (p *stubProvider) Upsert(recordType, ip string) error {
+func (p *stubProvider) Upsert(recordType string, ip ipdetect.IP) error {
 	p.upserts = append(p.upserts, upsertCall{recordType: recordType, ip: ip})
 	return nil
 }
@@ -62,8 +63,11 @@ func TestStaticIP(t *testing.T) {
 			if err != nil {
 				t.Fatalf("staticIP() error = %v", err)
 			}
-			if got != tt.want {
-				t.Errorf("staticIP() = %q, want %q", got, tt.want)
+			if got.Value != tt.want {
+				t.Errorf("staticIP() = %q, want %q", got.Value, tt.want)
+			}
+			if got.Source != "static" {
+				t.Errorf("staticIP() source = %q, want static", got.Source)
 			}
 		})
 	}
@@ -80,15 +84,15 @@ func TestRunnerRunUpsert(t *testing.T) {
 			name:     "A record with static IP",
 			cfg:      config.Config{IP: "203.0.113.1"},
 			provider: &stubProvider{mode: "upsert", types: []string{"A"}},
-			want:     []upsertCall{{recordType: "A", ip: "203.0.113.1"}},
+			want:     []upsertCall{{recordType: "A", ip: ipdetect.IP{Value: "203.0.113.1", Source: "static"}}},
 		},
 		{
 			name:     "A_AAAA with dual static IPs",
 			cfg:      config.Config{IP: "203.0.113.1,2001:db8::1"},
 			provider: &stubProvider{mode: "upsert", types: []string{"A", "AAAA"}},
 			want: []upsertCall{
-				{recordType: "A", ip: "203.0.113.1"},
-				{recordType: "AAAA", ip: "2001:db8::1"},
+				{recordType: "A", ip: ipdetect.IP{Value: "203.0.113.1", Source: "static"}},
+				{recordType: "AAAA", ip: ipdetect.IP{Value: "2001:db8::1", Source: "static"}},
 			},
 		},
 	}
@@ -107,8 +111,9 @@ func TestRunnerRunUpsert(t *testing.T) {
 }
 
 func TestRunnerRunMixedModes(t *testing.T) {
-	// upsert Provider 处理 A，delete Provider 处理 AAAA；
-	// 一次 Run() 内按各自 mode 分派，WAN IP 每种类型只检测一次
+	// The upsert provider handles A and the delete provider handles AAAA;
+	// one Run() dispatches by mode and the WAN IP is detected once per
+	// record type.
 	cfg := config.Config{IP: "203.0.113.1,2001:db8::1"}
 	upserter := &stubProvider{mode: "upsert", types: []string{"A"}}
 	deleter := &stubProvider{mode: "delete", types: []string{"AAAA"}}
@@ -116,7 +121,7 @@ func TestRunnerRunMixedModes(t *testing.T) {
 
 	runner.Run()
 
-	wantUpserts := []upsertCall{{recordType: "A", ip: "203.0.113.1"}}
+	wantUpserts := []upsertCall{{recordType: "A", ip: ipdetect.IP{Value: "203.0.113.1", Source: "static"}}}
 	if !reflect.DeepEqual(upserter.upserts, wantUpserts) {
 		t.Errorf("upsert provider calls = %+v, want %+v", upserter.upserts, wantUpserts)
 	}

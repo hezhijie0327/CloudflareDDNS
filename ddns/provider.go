@@ -1,5 +1,7 @@
 package ddns
 
+import "zjddns/internal/ipdetect"
+
 // Provider performs DNS record operations for a DDNS provider.
 //
 // Implementations own the record-level logging (record IDs, failure
@@ -14,9 +16,10 @@ type Provider interface {
 	// config section, e.g. config.TypeA / config.TypeAAAA or both for
 	// config.TypeAAndAAAA).
 	Types() []string
-	// Upsert ensures the record of the given type points to ip, creating
-	// it if missing or updating it when the current content differs.
-	Upsert(recordType, ip string) error
+	// Upsert ensures the record of the given type points to ip.Value,
+	// creating it if missing or updating it when the current content
+	// differs; ip.Source records how the IP was obtained.
+	Upsert(recordType string, ip ipdetect.IP) error
 	// Delete removes the record of the given type.
 	Delete(recordType string) error
 }
