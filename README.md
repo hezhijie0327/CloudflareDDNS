@@ -72,15 +72,16 @@ go build -o zjddns ./cmd/zjddns
 
 ```json
 {
-  "type": "A_AAAA",
-  "ttl": 1,
   "ip": "auto",
-  "mode": "upsert",
   "update_interval": 300,
+  "log_level": "info",
   "cloudflare": {
     "api_token": "your_cloudflare_api_token",
     "zone_name": "example.com",
     "record_name": "ddns.example.com",
+    "mode": "upsert",
+    "type": "A_AAAA",
+    "ttl": 1,
     "proxy_status": false
   }
 }
@@ -90,11 +91,9 @@ go build -o zjddns ./cmd/zjddns
 
 | 字段             | 类型   | 必填 | 说明                                                                  |
 | ---------------- | ------ | ---- | --------------------------------------------------------------------- |
-| `type`           | string | ❌   | 记录类型：`A`、`AAAA` 或 `A_AAAA`（默认：`A`）                       |
-| `ttl`            | int    | ❌   | TTL 值：`1`（自动）或 `120`-`86400` 秒（默认：`1`）                   |
 | `ip`             | string | ❌   | IP 地址：`auto`（自动检测）、静态 IP 或 `ipv4,ipv6`（默认：`auto`）   |
-| `mode`           | string | ❌   | 操作模式：`upsert`（创建/更新）或 `delete`（默认：`upsert`）          |
 | `update_interval`| int    | ❌   | 更新间隔秒数（默认：`300`，`0` 表示只运行一次）                       |
+| `log_level`      | string | ❌   | 日志级别：`error`/`warn`/`info`/`debug`，支持 `debug:CLOUDFLARE,IPDETECT` 组件过滤（默认：`info`） |
 
 ### Cloudflare 提供商配置（`"cloudflare"` 段）
 
@@ -105,6 +104,9 @@ go build -o zjddns ./cmd/zjddns
 | `x_auth_key`   | string | ❌   | ~~您的 Cloudflare API 密钥~~（已弃用，请使用 api_token）             |
 | `zone_name`    | string | ✅   | 您的域名（如 `example.com`）                                         |
 | `record_name`  | string | ✅   | 完整的 DNS 记录名称（如 `ddns.example.com`）                         |
+| `mode`         | string | ❌   | 操作模式：`upsert`（创建/更新）或 `delete`（默认：`upsert`，每个提供商独立配置） |
+| `type`         | string | ❌   | 记录类型：`A`、`AAAA` 或 `A_AAAA`（默认：`A`，每个提供商独立配置）   |
+| `ttl`          | int    | ❌   | TTL 值：`1`（自动）或 `120`-`86400` 秒（默认：`1`）                  |
 | `proxy_status` | bool   | ❌   | 启用 Cloudflare 代理：`true` 或 `false`（默认：`false`）             |
 
 ### 有效的 TTL 值
@@ -144,14 +146,14 @@ go build -o zjddns ./cmd/zjddns
 
 ```json
 {
-  "type": "A",
-  "ttl": 1,
   "ip": "auto",
-  "mode": "upsert",
   "cloudflare": {
     "api_token": "your_cloudflare_api_token",
     "zone_name": "example.com",
     "record_name": "home.example.com",
+    "mode": "upsert",
+    "type": "A",
+    "ttl": 1,
     "proxy_status": false
   }
 }
@@ -161,14 +163,14 @@ go build -o zjddns ./cmd/zjddns
 
 ```json
 {
-  "type": "A_AAAA",
-  "ttl": 300,
   "ip": "auto",
-  "mode": "upsert",
   "cloudflare": {
     "api_token": "your_cloudflare_api_token",
     "zone_name": "example.com",
     "record_name": "home.example.com",
+    "mode": "upsert",
+    "type": "A_AAAA",
+    "ttl": 300,
     "proxy_status": true
   }
 }
@@ -178,14 +180,14 @@ go build -o zjddns ./cmd/zjddns
 
 ```json
 {
-  "type": "A",
-  "ttl": 600,
   "ip": "192.168.1.100",
-  "mode": "upsert",
   "cloudflare": {
     "api_token": "your_cloudflare_api_token",
     "zone_name": "example.com",
     "record_name": "server.example.com",
+    "mode": "upsert",
+    "type": "A",
+    "ttl": 600,
     "proxy_status": false
   }
 }
@@ -195,11 +197,11 @@ go build -o zjddns ./cmd/zjddns
 
 ```json
 {
-  "mode": "delete",
   "cloudflare": {
     "api_token": "your_cloudflare_api_token",
     "zone_name": "example.com",
-    "record_name": "old.example.com"
+    "record_name": "old.example.com",
+    "mode": "delete"
   }
 }
 ```
@@ -256,12 +258,11 @@ zjddns/
   https://github.com/hezhijie0327/ZJDDNS
 __________________________________\o/_______
 
-🌐 Zone ID: abc123def456
-
-🔍 Checking A record...
-🌍 WAN IP: 203.0.113.1
-📝 Record does not exist, creating...
-✅ Successfully created A record
+[2026-08-13 16:00:00] CLOUDFLARE: Zone ID: abc123def456
+[2026-08-13 16:00:00] DDNS: Checking A record...
+[2026-08-13 16:00:00] DDNS: WAN IP: 203.0.113.1
+[2026-08-13 16:00:00] CLOUDFLARE: Record does not exist, creating...
+[2026-08-13 16:00:00] CLOUDFLARE: Successfully created A record
 ```
 
 ## 开发

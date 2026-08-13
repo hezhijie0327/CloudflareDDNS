@@ -14,6 +14,7 @@ import (
 	"net/http"
 	"strings"
 	"time"
+	"zjddns/internal/log"
 )
 
 // Detector resolves WAN IP addresses for DNS records.
@@ -51,7 +52,7 @@ func (d *Detector) WANIP(recordType string) (string, error) {
 	if ip, err := d.ipFromDNS(recordType); err == nil {
 		return ip, nil
 	} else {
-		fmt.Printf("⚠️  DNS detection failed (%v), falling back to HTTP...\n", err)
+		log.Warnf("IPDETECT: DNS detection failed (%v), falling back to HTTP", err)
 	}
 
 	return d.ipFromCloudflareTrace(recordType)

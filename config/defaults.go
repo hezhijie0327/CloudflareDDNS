@@ -5,15 +5,6 @@ const defaultUpdateIntervalSeconds = 300
 
 // SetDefaults 设置默认值
 func (c *Config) SetDefaults() {
-	if c.Mode == "" {
-		c.Mode = "upsert"
-	}
-	if c.Type == "" {
-		c.Type = "A"
-	}
-	if c.TTL == 0 {
-		c.TTL = 1
-	}
 	if c.IP == "" {
 		c.IP = "auto"
 	}
@@ -21,6 +12,10 @@ func (c *Config) SetDefaults() {
 	if c.UpdateInterval == nil {
 		c.UpdateInterval = new(int)
 		*c.UpdateInterval = defaultUpdateIntervalSeconds
+	}
+	// 各提供商子段的默认值
+	if c.Cloudflare != nil {
+		c.Cloudflare.setDefaults()
 	}
 }
 

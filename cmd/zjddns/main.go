@@ -7,6 +7,7 @@ import (
 	"time"
 	"zjddns/config"
 	"zjddns/ddns"
+	"zjddns/internal/log"
 	"zjddns/providers"
 )
 
@@ -47,43 +48,37 @@ func main() {
 	// 加载配置
 	cfg, err := config.Load(*configPath)
 	if err != nil {
-		fmt.Printf("❌ Failed to load config: %v\n", err)
+		log.Errorf("CONFIG: Failed to load config: %v", err)
 		return
 	}
 
 	// 设置默认值
 	cfg.SetDefaults()
 
+	// 应用日志级别（支持 "debug:COMP1,COMP2" 组件过滤）
+	lvl, components := log.ParseLevelFilter(cfg.LogLevel, log.Info)
+	log.SetLevelFilter(lvl, components)
+
 	// 验证配置
 	if err := cfg.Validate(); err != nil {
-		fmt.Printf("❌ Invalid config: %v\n", err)
+		log.Errorf("CONFIG: Invalid config: %v", err)
 		return
 	}
 
 	// 构造所有已配置的 Provider（可同时使用多个提供商）
 	ps, err := providers.All(cfg)
 	if err != nil {
-		fmt.Printf("❌ Failed to initialize provider: %v\n", err)
+		log.Errorf("CONFIG: Failed to initialize provider: %v", err)
 		return
 	}
 	runner := ddns.New(ps, cfg)
 
-	// 执行操作
-	fmt.Println()
-
 	// 获取更新间隔
 	updateInterval := cfg.Interval()
 
-	// 执行更新的函数
+	// 执行更新的函数（各 Provider 按自身配置的 mode 运行）
 	runUpdate := func() {
-		switch cfg.Mode {
-		case "upsert":
-			runner.Upsert()
-		case "delete":
-			runner.Delete()
-		default:
-			fmt.Printf("❌ Invalid mode: %s\n", cfg.Mode)
-		}
+		runner.Run()
 	}
 
 	// 如果 update_interval 为 0，只运行一次
@@ -97,14 +92,14 @@ func main() {
 	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
 
-	fmt.Printf("⏰ Running every %d seconds. Press Ctrl+C to stop.\n\n", updateInterval)
+	log.Infof("DDNS: Running every %d seconds. Press Ctrl+C to stop.", updateInterval)
 
 	// 立即执行一次
 	runUpdate()
 
 	// 循环执行
 	for range ticker.C {
-		fmt.Printf("\n🔄 %s - Starting scheduled update...\n", time.Now().Format(time.DateTime))
+		log.Infof("DDNS: %s - Starting scheduled update...", time.Now().Format(time.DateTime))
 		runUpdate()
 	}
 }
@@ -113,7 +108,7 @@ func main() {
 func printExampleConfig() {
 	data, err := config.Example()
 	if err != nil {
-		fmt.Printf("❌ Failed to generate example config: %v\n", err)
+		log.Errorf("CONFIG: Failed to generate example config: %v", err)
 		return
 	}
 

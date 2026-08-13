@@ -1,0 +1,302 @@
+// Package log provides a leveled logger with colored output and
+// component-based filtering.
+//
+// Log Level Format:
+//
+//	error | warn | info | debug
+//
+// Component Filtering:
+//
+//	debug:CLOUDFLARE,IPDETECT  → Debug level, only CLOUDFLARE + IPDETECT components
+//	info                        → Info level, all components
+//
+// Messages with a "PREFIX: " prefix are filtered by component; messages
+// without a recognized prefix always pass through. Error and Warn messages
+// always pass — a component filter cannot swallow operational failures.
+//
+// Canonical prefixes: DDNS (runner), CLOUDFLARE (cloudflare provider),
+// IPDETECT (WAN IP detection), CONFIG (config & startup).
+package log
+
+import (
+	"fmt"
+	"io"
+	"os"
+	"strings"
+	"sync"
+	"sync/atomic"
+	"time"
+)
+
+// Level represents a logging severity level.
+type Level int
+
+// Logger manages leveled logging with configurable output and optional
+// component-based filtering.
+type Logger struct {
+	level           atomic.Int32
+	writer          io.Writer
+	colorMap        [4]string
+	componentFilter map[string]bool // nil = all enabled; non-nil = only listed components
+	mu              sync.RWMutex    // protects componentFilter
+}
+
+// Error level indicates a component failure or data loss risk.
+// Warn level indicates a rare boundary condition or fallback path.
+// Info level indicates a lifecycle event or operation summary.
+// Debug level provides detailed information for debugging.
+const (
+	Error Level = iota
+	Warn
+	Info
+	Debug
+)
+
+// DefaultLevel is the default logging level string.
+const DefaultLevel = "info"
+
+const (
+	colorReset  = "\033[0m"
+	colorRed    = "\033[31m"
+	colorYellow = "\033[33m"
+	colorGreen  = "\033[32m"
+	colorCyan   = "\033[36m"
+	colorBold   = "\033[1m"
+)
+
+const logTimeFormat = time.DateTime
+
+var levelNames = [...]string{"ERROR", "WARN", "INFO", "DEBUG"}
+
+// Default is the package-level default Logger instance.
+var Default = NewLogger()
+
+// NewLogger creates a new Logger with default settings.
+func NewLogger() *Logger {
+	m := &Logger{
+		writer:   os.Stdout,
+		colorMap: [4]string{Error: colorRed, Warn: colorYellow, Info: colorGreen, Debug: colorCyan},
+	}
+	m.level.Store(int32(Info))
+	return m
+}
+
+// SetLevel sets the logging level, clamped to the valid range.
+func (m *Logger) SetLevel(lvl Level) {
+	if lvl < Error {
+		lvl = Error
+	} else if lvl > Debug {
+		lvl = Debug
+	}
+	m.level.Store(int32(lvl))
+}
+
+// Level returns the current logging level.
+func (m *Logger) Level() Level {
+	return Level(m.level.Load())
+}
+
+// SetComponentFilter sets the component filter. If components is empty, all
+// components pass through (no filtering). Otherwise, only messages with a
+// matching "PREFIX:" prefix are emitted.
+func (m *Logger) SetComponentFilter(components []string) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if len(components) == 0 {
+		m.componentFilter = nil
+		return
+	}
+	filter := make(map[string]bool, len(components))
+	for _, c := range components {
+		c = strings.ToUpper(strings.TrimSpace(c))
+		if c != "" {
+			filter[c] = true
+		}
+	}
+	if len(filter) == 0 {
+		m.componentFilter = nil
+	} else {
+		m.componentFilter = filter
+	}
+}
+
+// Log logs a message at the specified level, respecting both the level
+// threshold and any component filter.
+func (m *Logger) Log(lvl Level, format string, args ...any) {
+	if format == "" {
+		return
+	}
+	if lvl < Error {
+		lvl = Error
+	} else if lvl > Debug {
+		lvl = Debug
+	}
+	if lvl > Level(m.level.Load()) {
+		return
+	}
+
+	message := sanitizeLogMessage(fmt.Sprintf(format, args...))
+
+	// The filter only gates Info/Debug traffic — Error and Warn always pass
+	// through, so a filtered component cannot swallow operational failures.
+	if lvl >= Info {
+		m.mu.RLock()
+		filter := m.componentFilter
+		m.mu.RUnlock()
+		if filter != nil {
+			if prefix := extractPrefix(message); prefix != "" && !filter[prefix] {
+				return
+			}
+		}
+	}
+
+	levelStr := levelNames[lvl]
+
+	var color string
+	if int(lvl) < len(m.colorMap) {
+		color = m.colorMap[lvl]
+	} else {
+		color = colorReset
+	}
+
+	logLine := fmt.Sprintf("%s[%s]%s %s%-5s%s %s\n",
+		colorBold, time.Now().Format(logTimeFormat), colorReset,
+		color, levelStr, colorReset,
+		message)
+
+	_, _ = fmt.Fprint(m.writer, logLine) // _, _ = bytes, error: stdout write failures are non-recoverable
+}
+
+// Error logs an error-level message.
+func (m *Logger) Error(format string, args ...any) { m.Log(Error, format, args...) }
+
+// Warn logs a warning-level message.
+func (m *Logger) Warn(format string, args ...any) { m.Log(Warn, format, args...) }
+
+// Info logs an info-level message.
+func (m *Logger) Info(format string, args ...any) { m.Log(Info, format, args...) }
+
+// Debug logs a debug-level message.
+func (m *Logger) Debug(format string, args ...any) { m.Log(Debug, format, args...) }
+
+// String returns the string representation of the Level.
+func (l Level) String() string {
+	switch l {
+	case Error:
+		return "error"
+	case Warn:
+		return "warn"
+	case Info:
+		return "info"
+	case Debug:
+		return "debug"
+	default:
+		return "unknown"
+	}
+}
+
+// ParseLevelFilter parses a log level string that may include component
+// filters in the format "level:comp1,comp2,...". Returns the level and a
+// component list (nil components means no filtering). The defaultLevel is
+// used when parsing fails.
+func ParseLevelFilter(s string, defaultLevel Level) (lvl Level, components []string) {
+	if s == "" {
+		return defaultLevel, nil
+	}
+
+	// Split on colon: "debug:upstream,recursion" or plain "info".
+	parts := strings.SplitN(s, ":", 2)
+	levelStr := strings.TrimSpace(strings.ToLower(parts[0]))
+
+	switch levelStr {
+	case "error":
+		lvl = Error
+	case "warn":
+		lvl = Warn
+	case "info":
+		lvl = Info
+	case "debug":
+		lvl = Debug
+	default:
+		return defaultLevel, nil
+	}
+
+	if len(parts) == 2 && parts[1] != "" {
+		raw := strings.Split(parts[1], ",")
+		components := make([]string, 0, len(raw))
+		for _, c := range raw {
+			c = strings.TrimSpace(c)
+			if c != "" {
+				components = append(components, c)
+			}
+		}
+		if len(components) == 0 {
+			return lvl, nil // empty component list — no filtering (nil = all pass)
+		}
+		return lvl, components
+	}
+
+	return lvl, nil
+}
+
+// extractPrefix extracts the component prefix from a log message. Messages
+// are expected to start with "PREFIX: " (e.g., "CLOUDFLARE: updating...").
+// Returns the prefix in uppercase, or empty string if no prefix found.
+func extractPrefix(msg string) string {
+	idx := strings.Index(msg, ":")
+	if idx <= 0 || idx >= len(msg)-1 || msg[idx+1] != ' ' {
+		return ""
+	}
+	return strings.ToUpper(msg[:idx])
+}
+
+// Errorf logs an error-level message via the default logger.
+func Errorf(format string, args ...any) { Default.Error(format, args...) }
+
+// Warnf logs a warning-level message via the default logger.
+func Warnf(format string, args ...any) { Default.Warn(format, args...) }
+
+// Infof logs an info-level message via the default logger.
+func Infof(format string, args ...any) { Default.Info(format, args...) }
+
+// Debugf logs a debug-level message via the default logger.
+func Debugf(format string, args ...any) { Default.Debug(format, args...) }
+
+// SetLevel sets the logging level on the default logger.
+func SetLevel(lvl Level) { Default.SetLevel(lvl) }
+
+// SetLevelFilter applies both a level and optional component filter to the
+// default logger.
+func SetLevelFilter(lvl Level, components []string) {
+	Default.SetLevel(lvl)
+	Default.SetComponentFilter(components)
+}
+
+// sanitizeLogMessage replaces control characters (which could break
+// terminal output) with spaces.
+func sanitizeLogMessage(msg string) string {
+	if msg == "" {
+		return msg
+	}
+	needsReplace := false
+	for i := 0; i < len(msg); i++ {
+		c := msg[i]
+		if c <= 0x1f || c == 0x7f {
+			needsReplace = true
+			break
+		}
+	}
+	if !needsReplace {
+		return msg
+	}
+	b := make([]byte, 0, len(msg))
+	for i := 0; i < len(msg); i++ {
+		c := msg[i]
+		if c <= 0x1f || c == 0x7f {
+			b = append(b, ' ')
+		} else {
+			b = append(b, c)
+		}
+	}
+	return string(b)
+}

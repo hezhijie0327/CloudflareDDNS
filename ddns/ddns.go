@@ -3,9 +3,10 @@
 package ddns
 
 import (
-	"fmt"
+	"slices"
 	"zjddns/config"
 	"zjddns/internal/ipdetect"
+	"zjddns/internal/log"
 )
 
 // Runner 执行DDNS更新与删除操作的编排器
@@ -24,49 +25,72 @@ func New(providers []Provider, cfg *config.Config) *Runner {
 	}
 }
 
-// recordTypes 获取要处理的记录类型列表
-func (r *Runner) recordTypes() []string {
-	if r.cfg.Type == "A_AAAA" {
-		return []string{"A", "AAAA"}
+// unionTypes 收集给定 Provider 列表的记录类型（去重、保持配置顺序）
+func (r *Runner) unionTypes(providers []Provider) []string {
+	var types []string
+	for _, p := range providers {
+		for _, t := range p.Types() {
+			if !slices.Contains(types, t) {
+				types = append(types, t)
+			}
+		}
 	}
-	return []string{r.cfg.Type}
+	return types
 }
 
-// Upsert 处理更新模式（自动创建或更新）。
-// WAN IP 每种记录类型检测一次，推送给所有已配置的提供商；
-// 记录级别的输出（Record ID、创建/更新详情）由各 Provider 打印。
-func (r *Runner) Upsert() {
-	for _, recordType := range r.recordTypes() {
-		fmt.Printf("🔍 Checking %s record...\n", recordType)
+// Run 按各 Provider 配置的操作模式执行 upsert 或 delete
+func (r *Runner) Run() {
+	var upserters, deleters []Provider
+	for _, p := range r.providers {
+		switch p.Mode() {
+		case "upsert":
+			upserters = append(upserters, p)
+		case "delete":
+			deleters = append(deleters, p)
+		default:
+			log.Errorf("DDNS: Invalid mode: %s", p.Mode())
+		}
+	}
+
+	r.upsert(upserters)
+	r.delete(deleters)
+}
+
+// upsert 处理更新模式（自动创建或更新）。
+// WAN IP 每种记录类型检测一次，推送给所有处理该类型的 Provider；
+// 记录级别的输出由各 Provider 打印。
+func (r *Runner) upsert(providers []Provider) {
+	if len(providers) == 0 {
+		return
+	}
+
+	for _, recordType := range r.unionTypes(providers) {
+		log.Infof("DDNS: Checking %s record...", recordType)
 
 		// 获取IP
 		wanIP, err := r.detector.WANIP(recordType)
 		if err != nil {
-			fmt.Printf("❌ Failed to get WAN IP: %v\n\n", err)
+			log.Errorf("DDNS: Failed to get WAN IP: %v", err)
 			continue
 		}
-		fmt.Printf("🌍 WAN IP: %s\n", wanIP)
+		log.Infof("DDNS: WAN IP: %s", wanIP)
 
 		// 各 Provider 自行处理创建/更新细节与输出
-		for _, p := range r.providers {
-			_ = p.Upsert(recordType, wanIP)
+		for _, p := range providers {
+			if slices.Contains(p.Types(), recordType) {
+				_ = p.Upsert(recordType, wanIP)
+			}
 		}
 	}
 }
 
-// Delete 处理删除模式。记录级别的输出由各 Provider 打印。
-func (r *Runner) Delete() {
-	types := r.recordTypes()
-	if r.cfg.Type == "" {
-		// 如果没有指定类型，删除所有类型
-		types = []string{"A", "AAAA"}
-	}
+// delete 处理删除模式。各 Provider 删除自己配置的记录类型。
+func (r *Runner) delete(providers []Provider) {
+	for _, p := range providers {
+		for _, recordType := range p.Types() {
+			log.Infof("DDNS: Deleting %s record...", recordType)
 
-	for _, recordType := range types {
-		fmt.Printf("🗑️  Deleting %s record...\n", recordType)
-
-		// 各 Provider 自行处理删除细节与输出
-		for _, p := range r.providers {
+			// Provider 自行处理删除细节与输出
 			_ = p.Delete(recordType)
 		}
 	}

@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 	"zjddns/config"
+	"zjddns/internal/log"
 )
 
 // Client 封装的HTTP客户端
@@ -44,16 +45,16 @@ func New(cfg *config.Config) (*Client, error) {
 
 	// 检查是否使用了已弃用的认证方式
 	if cfg.Cloudflare.XAuthEmail != "" && cfg.Cloudflare.XAuthKey != "" && cfg.Cloudflare.APIToken == "" {
-		fmt.Printf("⚠️  WARNING: Using deprecated authentication method (x_auth_email + x_auth_key)\n")
-		fmt.Printf("⚠️  Please migrate to using 'api_token' instead\n")
-		fmt.Printf("⚠️  You can create an API token at: https://dash.cloudflare.com/profile/api-tokens\n\n")
+		log.Warnf("CLOUDFLARE: Using deprecated authentication method (x_auth_email + x_auth_key)")
+		log.Warnf("CLOUDFLARE: Please migrate to using 'api_token' instead")
+		log.Warnf("CLOUDFLARE: You can create an API token at: https://dash.cloudflare.com/profile/api-tokens")
 	}
 
 	zoneID, err := c.ZoneID()
 	if err != nil {
 		return nil, fmt.Errorf("get zone ID: %w", err)
 	}
-	fmt.Printf("🌐 Zone ID: %s\n", zoneID)
+	log.Infof("CLOUDFLARE: Zone ID: %s", zoneID)
 	c.zoneID = zoneID
 
 	return c, nil

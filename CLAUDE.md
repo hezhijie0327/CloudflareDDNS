@@ -35,22 +35,32 @@ sh scripts/bump-version.sh patch   # patch|minor|major — bumps version.go + RE
 Layered DAG mirroring ZJDNS — imports only flow upward; no cycles:
 
 ```
-internal/ipdetect       ← zero deps (foundation): WAN IP detection
+internal/log           ← zero deps (foundation): leveled logging, component filter
+internal/ipdetect       ← zero deps: WAN IP detection
 config                  ← zero deps: load/defaults/validate/example
-providers/cloudflare    ← zero deps: Cloudflare API v4 client; implements ddns.Provider
+providers/cloudflare    ← config: Cloudflare API v4 client; implements ddns.Provider
 ddns                    ← config + internal/ipdetect: Provider interface + upsert/delete orchestration
 providers               ← ddns + providers/cloudflare + config: one instance per configured section
-cmd/zjddns              ← wires everything: flags, banner, provider selection, update loop
+cmd/zjddns              ← wires everything: flags, banner, log level, update loop
 ```
 
 Key flows (need reading across packages to see):
 
 - **Provider mechanism** (`ddns.Provider`, defined consumer-side in ddns): `Upsert(recordType, ip)` / `Delete(recordType)`. **No provider selector field** — every configured provider section (e.g. `"cloudflare": {...}`) becomes one Provider instance; multiple sections run simultaneously, each updating its own records. `providers.All(cfg)` builds the list. Adding a provider = new `providers/<name>/` package + its config section struct in `config/` + a case in `providers.All` — do not leak provider specifics into `ddns` or `cmd`.
 - **Provider construction** (`providers/cloudflare.New`): prints the deprecated-auth warning (provider-specific), resolves the Zone ID once at startup (prints `🌐 Zone ID`), stores it on the Client; errors bubble up as provider-init failure in cmd.
-- **Upsert** (`ddns.Runner.Upsert`): per record type — `ipdetect.Detector.WANIP` once → push the same IP to **every** provider. Cloudflare implementation: `RecordID` ("" = missing) → create, or `RecordContent` compare → update if changed. Record-level console output (record IDs, create/update details, failures) is owned by the provider implementation; Runner prints only the generic lines (🔍/🌍/❌ WAN IP).
+- **Run dispatch** (`ddns.Runner.Run`): providers split by `Provider.Mode()` — upserters run the union-type flow (per record type `ipdetect.Detector.WANIP` once → push the same IP to every upserter handling that type), deleters each delete their own types. Mixed modes in one config are supported. Cloudflare upsert implementation: `RecordID` ("" = missing) → create, or `RecordContent` compare → update if changed. Record-level logging is owned by the provider implementation; Runner logs only the generic lines.
 - **WAN IP detection** (`internal/ipdetect`): DNS CHAOS TXT query to `whoami.cloudflare` via family-forced server (1.1.1.1 / 2606:4700:4700::1111) with HTTP trace (`/cdn-cgi/trace`) fallback; static IP config supports `"ipv4,ipv6"` dual form. DNS packet build/parse is hand-rolled in `dnsquery.go` (UDP with TCP retry on TC flag) — this is why there are no deps.
 - **Auth** (`providers/cloudflare.Client.request`): Bearer `api_token` preferred; legacy `X-Auth-Email`/`X-Auth-Key` headers kept for backward compatibility — both paths must keep working.
-- **Config semantics** (`config`): top level holds provider-agnostic settings (`type`/`ttl`/`ip`/`mode`/`update_interval`); each provider gets its own nested section struct (`CloudflareConfig`, pointer field — presence = enabled). `SetDefaults()` runs before `Validate()` in cmd; `Validate()` requires at least one provider section, then validates each section; `update_interval` is a pointer (nil → 300s, 0 → run once); type/TTL checks are skipped in `delete` mode. The deprecated auth fields intentionally trigger staticcheck deprecation notices — expected.
+- **Config semantics** (`config`): top level holds provider-agnostic settings (`ip`/`update_interval`/`log_level`); each provider gets its own nested section struct (`CloudflareConfig`, pointer field — presence = enabled) with provider-specific `mode`/`type`/`ttl`/`record_name`/auth. `SetDefaults()` runs before `Validate()` in cmd and applies per-section defaults; `Validate()` requires at least one provider section, then validates each section (type/TTL checks are skipped in `delete` mode). The deprecated auth fields intentionally trigger staticcheck deprecation notices — expected.
+
+## Logging
+
+All logs use `zjddns/internal/log` (package-level `Default` logger, ZJDNS-style). Default level: `info`, configurable via config `log_level` including component filtering (`"debug:CLOUDFLARE,IPDETECT"`).
+
+- **No emoji in log output** — prefix + plain text only.
+- **Canonical prefixes**: `DDNS` (runner), `CLOUDFLARE` (cloudflare provider), `IPDETECT` (WAN IP detection), `CONFIG` (config & startup).
+- **Level semantics**: Error = component failure; Warn = fallback path (DNS detection fallback, deprecated auth); Info = lifecycle/operation summary; Debug = detail.
+- **Filter rule**: component filter gates only Info/Debug; Error/Warn always pass so a filtered component cannot swallow operational failures.
 
 ## Conventions
 
