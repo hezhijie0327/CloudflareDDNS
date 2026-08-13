@@ -52,7 +52,7 @@ go build -o zjddns ./cmd/zjddns
 - 🎯 **双操作模式**：创建/更新 DNS 记录或删除记录
 - 🧱 **零第三方依赖**：DNS 报文查询/解析为手写实现（`internal/ipdetect/dnsquery.go`），纯标准库构建
 - 🐳 **Docker 支持**：多架构 Docker 镜像（linux/amd64、linux/arm64）
-- 🔒 **安全**：支持 Cloudflare API Token（推荐）或传统的 X-Auth-Email/X-Auth-Key 认证
+- 🔒 **安全**：使用 Cloudflare API Token 认证
 - 🔌 **Provider 机制**：每个提供商一个配置子段，**可同时配置多个**（各更新各的域）；Cloudflare 为内置实现，新提供商以插件包形式接入（`providers/`）
 
 ## 命令行参数
@@ -99,9 +99,7 @@ go build -o zjddns ./cmd/zjddns
 
 | 字段           | 类型   | 必填 | 说明                                                                 |
 | -------------- | ------ | ---- | -------------------------------------------------------------------- |
-| `api_token`    | string | ✅   | 您的 Cloudflare API Token（推荐）                                    |
-| `x_auth_email` | string | ❌   | ~~您的 Cloudflare 账户邮箱~~（已弃用，请使用 api_token）             |
-| `x_auth_key`   | string | ❌   | ~~您的 Cloudflare API 密钥~~（已弃用，请使用 api_token）             |
+| `api_token`    | string | ✅   | 您的 Cloudflare API Token                                           |
 | `zone_name`    | string | ✅   | 您的域名（如 `example.com`）                                         |
 | `record_name`  | string | ✅   | 完整的 DNS 记录名称（如 `ddns.example.com`）                         |
 | `mode`         | string | ❌   | 操作模式：`upsert`（创建/更新）或 `delete`（默认：`upsert`，每个提供商独立配置） |
@@ -221,8 +219,6 @@ zjddns/
 
 ## 获取 Cloudflare API 凭证
 
-#### 方式一：使用 API Token（推荐）
-
 1. 登录您的 [Cloudflare 控制台](https://dash.cloudflare.com/)
 2. 前往 **我的个人资料** → **API 令牌**
 3. 点击 **创建令牌**
@@ -233,15 +229,6 @@ zjddns/
 5. 可以选择 **区域资源** 来限制 Token 只能访问特定域名
 6. 创建后，复制 Token 并填写到配置文件的 `api_token` 字段
 
-#### 方式二：使用全局 API 密钥（已弃用）
-
-1. 登录您的 [Cloudflare 控制台](https://dash.cloudflare.com/)
-2. 前往 **我的个人资料** → **API 令牌**或**全局 API 密钥**
-3. **邮箱**：使用您的账户邮箱
-4. **API 密钥**：您可以使用以下任一选项：
-   - **全局 API 密钥**（在"全局 API 密钥"部分找到）
-
-⚠️ **注意**：为了安全起见，推荐使用 API Token 方式。全局 API 密钥拥有账户的完全访问权限，风险较高。
 
 ## 输出示例
 

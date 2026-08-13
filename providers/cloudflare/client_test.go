@@ -317,30 +317,4 @@ func TestAuthHeaders(t *testing.T) {
 			t.Fatalf("RecordID() error = %v", err)
 		}
 	})
-
-	t.Run("legacy keys", func(t *testing.T) {
-		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			if got := r.Header.Get("X-Auth-Email"); got != "a@b.c" {
-				t.Errorf("X-Auth-Email = %q, want a@b.c", got)
-			}
-			if got := r.Header.Get("X-Auth-Key"); got != "secret" {
-				t.Errorf("X-Auth-Key = %q, want secret", got)
-			}
-			if got := r.Header.Get("Authorization"); got != "" {
-				t.Errorf("Authorization = %q, want empty", got)
-			}
-			jsonResponse(w, `[]`)
-		}))
-		t.Cleanup(server.Close)
-
-		cfg := testCfg()
-		cfg.Cloudflare.APIToken = ""
-		cfg.Cloudflare.XAuthEmail = "a@b.c" //nolint:staticcheck // deprecated field under backward-compat test
-		cfg.Cloudflare.XAuthKey = "secret"  //nolint:staticcheck // deprecated field under backward-compat test
-		client := &Client{httpClient: server.Client(), baseURL: server.URL, cfg: cfg, zoneID: "zone-1"}
-
-		if _, err := client.RecordID("zone-1", "A"); err != nil {
-			t.Fatalf("RecordID() error = %v", err)
-		}
-	})
 }

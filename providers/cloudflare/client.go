@@ -61,13 +61,6 @@ func New(cfg *config.Config) (*Client, error) {
 		cfg:        cfg,
 	}
 
-	// Warn about the deprecated authentication method before any API call.
-	if cfg.Cloudflare.XAuthEmail != "" && cfg.Cloudflare.XAuthKey != "" && cfg.Cloudflare.APIToken == "" {
-		log.Warnf("CLOUDFLARE: Using deprecated authentication method (x_auth_email + x_auth_key)")
-		log.Warnf("CLOUDFLARE: Please migrate to using 'api_token' instead")
-		log.Warnf("CLOUDFLARE: You can create an API token at: https://dash.cloudflare.com/profile/api-tokens")
-	}
-
 	zoneID, err := c.ZoneID()
 	if err != nil {
 		return nil, fmt.Errorf("get zone ID: %w", err)
@@ -97,14 +90,8 @@ func (c *Client) request(method, path string, payload any) (*response, error) {
 		return nil, err
 	}
 
-	// Prefer API Token authentication; the legacy X-Auth-* headers are
-	// kept for backward compatibility.
-	if c.cfg.Cloudflare.APIToken != "" {
-		req.Header.Set("Authorization", "Bearer "+c.cfg.Cloudflare.APIToken)
-	} else {
-		req.Header.Set("X-Auth-Email", c.cfg.Cloudflare.XAuthEmail)
-		req.Header.Set("X-Auth-Key", c.cfg.Cloudflare.XAuthKey)
-	}
+	// Bearer token authentication.
+	req.Header.Set("Authorization", "Bearer "+c.cfg.Cloudflare.APIToken)
 	req.Header.Set("Content-Type", "application/json")
 
 	resp, err := c.httpClient.Do(req)

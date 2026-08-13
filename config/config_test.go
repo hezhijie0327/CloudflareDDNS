@@ -77,10 +77,6 @@ func TestValidate(t *testing.T) {
 	}{
 		{name: "valid api token", cfg: validCfg()},
 		{
-			name: "valid legacy auth",
-			cfg:  Config{Cloudflare: &CloudflareConfig{XAuthEmail: "a@b.c", XAuthKey: "key", ZoneName: "example.com", RecordName: "ddns.example.com", Mode: "upsert", Type: "A", TTL: 1}},
-		},
-		{
 			name:    "no provider configured",
 			cfg:     Config{},
 			wantErr: "no provider",
