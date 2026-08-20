@@ -47,15 +47,13 @@ linters:
     gocritic:
       enable-all: true
 
+    gosec: {}
+
     exhaustive:
       default-signifies-exhaustive: true
 
     nilnil:
       checked-types: [ptr, map, chan]
-
-    errname:
-      error-prefix: Err
-      error-type-suffix: Error
 
     usestdlibvars:
       time-month: true
@@ -69,6 +67,8 @@ linters:
       asserts: true
       comparison: true
 
+    makezero: {}
+
     perfsprint:
       int-conversion: true
       err-error: true
@@ -80,4 +80,5 @@ formatters:
     - gofumpt
   settings:
     gofumpt:
-      extra-rules: true
+      extra:
+        group-params: true

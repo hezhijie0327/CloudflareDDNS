@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project
 
-ZJDDNS — a lightweight, zero-dependency DDNS updater that keeps DNS records in sync with the WAN IP. Pure Go, module `zjddns`, **zero third-party dependencies** (a deliberate feature — do not add external packages without explicit approval; DNS queries are hand-rolled for this reason). Cloudflare is the first DDNS provider behind a Provider abstraction; more providers are expected. User docs: [README.md](README.md).
+ZJDDNS — a lightweight, zero-dependency DDNS updater that keeps DNS records in sync with the WAN IP. Pure Go, module `zjddns` (Go 1.27.0, `CGO_ENABLED=0` compatible), **zero third-party dependencies** (a deliberate feature — do not add external packages without explicit approval; DNS queries are hand-rolled for this reason). Cloudflare is the first DDNS provider behind a Provider abstraction; more providers are expected. User docs: [README.md](README.md).
 
 ## Commands
 

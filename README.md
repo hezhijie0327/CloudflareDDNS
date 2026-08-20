@@ -10,9 +10,9 @@
 
 ```
 
-[![Version](https://img.shields.io/badge/Version-2.0.0-informational)](https://github.com/hezhijie0327/ZJDDNS/releases)
+[![Version](https://img.shields.io/badge/Version-2.0.1-informational)](https://github.com/hezhijie0327/ZJDDNS/releases)
 [![License](https://img.shields.io/badge/License-Apache%202.0--Commons%20Clause-blue)](LICENSE)
-[![Go Version](https://img.shields.io/badge/Go-1.26-00ADD8?logo=go)](https://go.dev/)
+[![Go Version](https://img.shields.io/badge/Go-1.27-00ADD8?logo=go)](https://go.dev/)
 [![Lint](https://img.shields.io/badge/golangci--lint-0%20issues-success)](https://golangci-lint.run/)
 
 轻量级、零第三方依赖的 DDNS 更新工具。WAN IP 变化时自动更新 DNS 记录。
